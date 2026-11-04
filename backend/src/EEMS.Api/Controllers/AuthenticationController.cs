@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using EEMS.Api.Security;
+using EEMS.Modules.Tenants.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace EEMS.Api.Controllers;
 
@@ -13,6 +15,7 @@ namespace EEMS.Api.Controllers;
 [Route("api/v1/auth")]
 public sealed class AuthenticationController(
     LocalAuthenticationService authenticationService,
+    TenantsDbContext tenantsDbContext,
     ITenantContext tenantContext) : ControllerBase
 {
     [AllowAnonymous]
@@ -22,7 +25,13 @@ public sealed class AuthenticationController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<TokenResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await authenticationService.LoginAsync(request.TenantId, request.Username, request.Password, cancellationToken);
+        var tenantId = await tenantsDbContext.Tenants
+            .Where(tenant => tenant.Code == request.TenantId)
+            .Select(tenant => (Guid?)tenant.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (tenantId is null) return Unauthorized();
+
+        var result = await authenticationService.LoginAsync(tenantId.Value, request.Username, request.Password, cancellationToken);
         return result is null ? Unauthorized() : Ok(TokenResponse.From(result));
     }
 
@@ -68,7 +77,7 @@ public sealed class AuthenticationController(
 }
 
 public sealed record LoginRequest(
-    Guid TenantId,
+    [Required, RegularExpression("^[0-9]{10}$")] string TenantId,
     [Required, MaxLength(200)] string Username,
     [Required, MaxLength(200)] string Password);
 

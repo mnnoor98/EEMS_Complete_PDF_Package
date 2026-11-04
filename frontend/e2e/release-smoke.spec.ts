@@ -1,5 +1,5 @@
 import {expect,test,Page} from '@playwright/test';
-const tenant='11111111-1111-1111-1111-111111111111';
+const tenant='1000000001';
 const permissions=['dashboard.read','elections.read','workforce.read','polling.read','inventory.read','finance.read','events.read','results.read','reporting.read'];
 function jwt(){const encode=(value:unknown)=>Buffer.from(JSON.stringify(value)).toString('base64url');return`${encode({alg:'none',typ:'JWT'})}.${encode({sub:'22222222-2222-2222-2222-222222222222',tenant_id:tenant,name:'Release Tester',permission:permissions,exp:Math.floor(Date.now()/1000)+3600})}.signature`}
 async function authenticate(page:Page){await page.addInitScript(token=>sessionStorage.setItem('eems.auth',JSON.stringify({accessToken:token,accessTokenExpiresAtUtc:new Date(Date.now()+3600000).toISOString(),refreshToken:'test',refreshTokenExpiresAtUtc:new Date(Date.now()+86400000).toISOString(),passwordChangeRequired:false})),jwt())}

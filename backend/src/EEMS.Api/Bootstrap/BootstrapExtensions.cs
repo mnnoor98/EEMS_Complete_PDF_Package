@@ -32,8 +32,6 @@ public static class BootstrapExtensions
         if (!options.Enabled) return;
 
         var identityDb = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        if (await identityDb.Users.AnyAsync(cancellationToken)) return;
-
         var tenantDb = scope.ServiceProvider.GetRequiredService<TenantsDbContext>();
         var tenantCode = options.TenantCode.Trim().ToUpperInvariant();
         var tenant = await tenantDb.Tenants.SingleOrDefaultAsync(item => item.Code == tenantCode, cancellationToken);
@@ -49,7 +47,8 @@ public static class BootstrapExtensions
             $"SELECT set_config('app.tenant_id', {tenant.Id.ToString()}, true)",
             cancellationToken);
 
-        if (await identityDb.Users.AnyAsync(cancellationToken)) return;
+        if (await identityDb.Users.AnyAsync(
+                item => item.ExternalSubject == options.AdminUsername.Trim(), cancellationToken)) return;
         var user = User.Create(options.AdminUsername, options.AdminDisplayName, options.AdminEmail);
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
         var credential = PasswordCredential.Create(user.Id, passwordHasher.HashPassword(user, options.AdminPassword));

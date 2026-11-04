@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
-  AdministrationDashboard, PermissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WorkforceLookups
+  AdministrationDashboard, ExportSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WorkforceLookups
 } from '../models/api.models';
 
 @Injectable({providedIn: 'root'})
@@ -26,6 +26,12 @@ export class EemsApiService {
   getPermissions() { return this.http.get<PermissionSummary[]>('/api/v1/admin/permissions'); }
   assignPermission(roleId:string,permissionCode:string) { return this.http.post<void>(`/api/v1/admin/roles/${roleId}/permissions`,{permissionCode}); }
   getAdministrationDashboard() { return this.http.get<AdministrationDashboard>('/api/v1/admin/dashboard'); }
+  getResultLookups(electionId:string) { return this.http.get<ResultLookups>(`/api/v1/elections/${electionId}/results/lookups`); }
+  getResultSubmissions(electionId:string) { return this.http.get<ResultSubmissionSummary[]>(`/api/v1/elections/${electionId}/results`); }
+  submitResult(electionId:string,body:object) { return this.http.post<ResultSubmissionSummary>(`/api/v1/elections/${electionId}/results`,body); }
+  verifyResult(electionId:string,submission:ResultSubmissionSummary,resultingStateId:number,note:string) { return this.http.post<ResultSubmissionSummary>(`/api/v1/elections/${electionId}/results/${submission.submissionId}/verify`,{resultingStateId,expectedVersion:submission.version,note}); }
+  getExports(electionId:string) { return this.http.get<ExportSummary[]>(`/api/v1/elections/${electionId}/results/exports`); }
+  requestExport(electionId:string,reportType:string,format:string) { return this.http.post<ExportSummary>(`/api/v1/elections/${electionId}/results/exports`,{reportType,format}); }
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }
   createTeam(id: string, body: {areaId: number; name: string}) { return this.http.post<TeamSummary>(`/api/v1/elections/${id}/workforce/teams`, body); }

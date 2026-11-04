@@ -13,4 +13,8 @@ public static class PermissionCodes
     public const string WorkforceManage = "workforce.manage";
     public const string PollingRead = "polling.read";
     public const string PollingManage = "polling.manage";
+    public const string ResultsRead = "results.read";
+    public const string ResultsManage = "results.manage";
+    public const string ReportingRead = "reporting.read";
+    public const string ReportingManage = "reporting.manage";
 }

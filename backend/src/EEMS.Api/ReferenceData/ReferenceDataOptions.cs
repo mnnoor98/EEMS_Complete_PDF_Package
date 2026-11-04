@@ -11,6 +11,8 @@ public sealed class ReferenceDataOptions
     public TaskStateDefinition[] TaskStates { get; init; } = [];
     public TaskPriorityDefinition[] TaskPriorities { get; init; } = [];
     public ReadinessStateDefinition[] ReadinessStates { get; init; } = [];
+    public SubmissionStateDefinition[] SubmissionStates { get; init; } = [];
+    public ExportStateDefinition[] ExportStates { get; init; } = [];
 }
 
 public sealed class ElectionTypeDefinition
@@ -70,3 +72,5 @@ public sealed class ReadinessStateDefinition
     public string Name { get; init; } = string.Empty;
     public short Rank { get; init; }
 }
+public sealed class SubmissionStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsVerified { get; init; } }
+public sealed class ExportStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsTerminal { get; init; } }

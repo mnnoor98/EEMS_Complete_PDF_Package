@@ -28,6 +28,10 @@ public static class AuthorizationSetupExtensions
             AddPolicy(options, PermissionCodes.WorkforceManage);
             AddPolicy(options, PermissionCodes.PollingRead);
             AddPolicy(options, PermissionCodes.PollingManage);
+            AddPolicy(options, PermissionCodes.ResultsRead);
+            AddPolicy(options, PermissionCodes.ResultsManage);
+            AddPolicy(options, PermissionCodes.ReportingRead);
+            AddPolicy(options, PermissionCodes.ReportingManage);
         });
         return services;
     }

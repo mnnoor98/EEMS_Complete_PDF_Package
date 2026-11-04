@@ -8,6 +8,10 @@ using EEMS.Modules.Teams.Domain;
 using EEMS.Modules.Teams.Infrastructure;
 using EEMS.Modules.Operations.Domain;
 using EEMS.Modules.Operations.Infrastructure;
+using EEMS.Modules.Results.Domain;
+using EEMS.Modules.Results.Infrastructure;
+using EEMS.Modules.Reporting.Domain;
+using EEMS.Modules.Reporting.Infrastructure;
 
 namespace EEMS.Api.ReferenceData;
 
@@ -83,16 +87,29 @@ public static class ReferenceDataExtensions
             if (!await operations.ReadinessStates.AnyAsync(item => item.Id == definition.Id, token))
                 operations.ReadinessStates.Add(ReadinessState.Create(definition.Id, definition.Code, definition.Name, definition.Rank));
         await operations.SaveChangesAsync(token);
+
+        var results = scope.ServiceProvider.GetRequiredService<ResultsDbContext>();
+        foreach (var definition in options.SubmissionStates)
+            if (!await results.States.AnyAsync(item => item.Id == definition.Id, token))
+                results.States.Add(SubmissionState.Create(definition.Id, definition.Code, definition.Name, definition.IsVerified));
+        await results.SaveChangesAsync(token);
+
+        var reporting = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
+        foreach (var definition in options.ExportStates)
+            if (!await reporting.ExportStates.AnyAsync(item => item.Id == definition.Id, token))
+                reporting.ExportStates.Add(ExportState.Create(definition.Id, definition.Code, definition.Name, definition.IsTerminal));
+        await reporting.SaveChangesAsync(token);
     }
 
     private static bool IsValid(ReferenceDataOptions options) =>
-        options.ElectionTypes.Length > 0 && options.LifecycleStates.Length > 0 && options.TaskStates.Length > 0 && options.TaskPriorities.Length > 0 && options.ReadinessStates.Length > 0 &&
+        options.ElectionTypes.Length > 0 && options.LifecycleStates.Length > 0 && options.TaskStates.Length > 0 && options.TaskPriorities.Length > 0 && options.ReadinessStates.Length > 0 && options.SubmissionStates.Length > 0 && options.ExportStates.Length > 0 &&
         options.Positions.Length > 0 && options.AreaTypes.Length > 0 && options.Areas.Length > 0 &&
         options.ElectionTypes.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.LifecycleStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.TaskStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.TaskPriorities.All(item => item.Id > 0 && item.Rank > 0 && HasText(item.Code, item.Name)) &&
         options.ReadinessStates.All(item => item.Id > 0 && item.Rank > 0 && HasText(item.Code, item.Name)) &&
+        options.SubmissionStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) && options.ExportStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.Positions.All(item => item.Id > 0 && item.ElectionTypeId > 0 && HasText(item.Code, item.Name)) &&
         options.AreaTypes.All(item => item.Id > 0 && item.Level > 0 && HasText(item.Code, item.Name)) &&
         options.Areas.All(item => item.Id > 0 && item.AreaTypeId > 0 && HasText(item.Code, item.NameBn));

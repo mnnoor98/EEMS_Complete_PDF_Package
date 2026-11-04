@@ -29,6 +29,7 @@ using EEMS.Api.Security;
 using EEMS.Api.Authorization;
 using EEMS.Api.ReferenceData;
 using Microsoft.EntityFrameworkCore;
+using EEMS.Api.Results;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,6 +49,7 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<FinanceDbContext>()
     .AddDbContextCheck<InventoryDbContext>().AddDbContextCheck<OperationsDbContext>().AddDbContextCheck<ResultsDbContext>().AddDbContextCheck<ReportingDbContext>();
 builder.Services.AddControllers();
+builder.Services.AddScoped<ResultsReportingOperationsService>();
 builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddApiOpenApi();
 builder.Services.AddInitialBootstrap(builder.Configuration);

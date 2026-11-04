@@ -36,6 +36,7 @@ using EEMS.Api.Events;
 using EEMS.Api.Dashboard;
 using EEMS.Api.Audit;
 using EEMS.Api.Time;
+using EEMS.Api.MasterData;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,7 @@ builder.Services.AddScoped<FinanceOperationsService>();
 builder.Services.AddScoped<EventOperationsService>();
 builder.Services.AddScoped<OperationsDashboardService>();
 builder.Services.AddScoped<AuditNotificationService>();
+builder.Services.AddScoped<MasterDataService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IBusinessClock,BusinessClock>();
 builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);

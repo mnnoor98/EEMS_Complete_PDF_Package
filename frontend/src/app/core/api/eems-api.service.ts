@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,FieldMemberSummary,FieldAttendanceSummary,MemberWorkSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamLeaderDashboardSummary, TeamMemberSummary, TeamSummary,
-  AdministrationDashboard, AllocationSummary, AuditPage, BudgetLineSummary, BudgetSummary, CampaignEventSummary, EventWorkspace, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MeetingSummary, MovementSummary, NotificationFeed, OperationsDashboard, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VenueSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
+  AdministrationDashboard, AllocationSummary, AuditPage, BudgetLineSummary, BudgetSummary, CampaignEventSummary, EventWorkspace, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MasterArea, MasterDataWorkspace, MasterElectionType, MasterPosition, MasterTaskPriority, MasterTaskState, MeetingSummary, MovementSummary, NotificationFeed, OperationsDashboard, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VenueSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
 } from '../models/api.models';
 
 @Injectable({providedIn: 'root'})
@@ -26,6 +26,12 @@ export class EemsApiService {
   getPermissions() { return this.http.get<PermissionSummary[]>('/api/v1/admin/permissions'); }
   assignPermission(roleId:string,permissionCode:string) { return this.http.post<void>(`/api/v1/admin/roles/${roleId}/permissions`,{permissionCode}); }
   getAdministrationDashboard() { return this.http.get<AdministrationDashboard>('/api/v1/admin/dashboard'); }
+  getMasterData(){return this.http.get<MasterDataWorkspace>('/api/v1/master-data')}
+  addMasterArea(body:object){return this.http.post<MasterArea>('/api/v1/master-data/areas',body)}
+  addMasterElectionType(body:object){return this.http.post<MasterElectionType>('/api/v1/master-data/election-types',body)}
+  addMasterPosition(body:object){return this.http.post<MasterPosition>('/api/v1/master-data/positions',body)}
+  addMasterTaskState(body:object){return this.http.post<MasterTaskState>('/api/v1/master-data/task-states',body)}
+  addMasterTaskPriority(body:object){return this.http.post<MasterTaskPriority>('/api/v1/master-data/task-priorities',body)}
   getResultLookups(electionId:string) { return this.http.get<ResultLookups>(`/api/v1/elections/${electionId}/results/lookups`); }
   getResultSubmissions(electionId:string) { return this.http.get<ResultSubmissionSummary[]>(`/api/v1/elections/${electionId}/results`); }
   submitResult(electionId:string,body:object) { return this.http.post<ResultSubmissionSummary>(`/api/v1/elections/${electionId}/results`,body); }

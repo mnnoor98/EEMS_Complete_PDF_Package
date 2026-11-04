@@ -1,0 +1,2 @@
+namespace EEMS.Modules.Teams.Domain;
+public sealed class Attendance{private Attendance(){}public Attendance(Guid tenantId,Guid trainingId,Guid userId,DateTimeOffset recordedAtUtc){if(tenantId==Guid.Empty||trainingId==Guid.Empty||userId==Guid.Empty)throw new ArgumentException("Tenant, training and user are required.");TenantId=tenantId;TrainingId=trainingId;UserId=userId;RecordedAtUtc=recordedAtUtc;}public Guid TenantId{get;private set;}public Guid TrainingId{get;private set;}public Guid UserId{get;private set;}public DateTimeOffset RecordedAtUtc{get;private set;}}

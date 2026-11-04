@@ -1,0 +1,3 @@
+using EEMS.Modules.Polling.Infrastructure;using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;using Microsoft.Extensions.DependencyInjection;
+namespace EEMS.Modules.Polling;
+public static class PollingModule{public static IServiceCollection AddPollingModule(this IServiceCollection services,IConfiguration configuration){var connection=configuration.GetConnectionString("EemsDatabase");if(string.IsNullOrWhiteSpace(connection))throw new InvalidOperationException("ConnectionStrings:EemsDatabase is required.");services.AddDbContext<PollingDbContext>(x=>x.UseNpgsql(connection));return services;}}

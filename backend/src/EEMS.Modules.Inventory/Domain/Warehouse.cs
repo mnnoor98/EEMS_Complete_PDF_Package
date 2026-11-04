@@ -1,0 +1,3 @@
+using EEMS.SharedKernel.Domain;
+namespace EEMS.Modules.Inventory.Domain;
+public sealed class Warehouse:Entity<Guid>{private Warehouse(){}private Warehouse(Guid id,Guid tenantId,long areaId,string name){if(tenantId==Guid.Empty||areaId<=0)throw new ArgumentException("Tenant and area are required.");Id=id;TenantId=tenantId;AreaId=areaId;Name=InventoryRules.Text(name,160);IsActive=true;}public Guid TenantId{get;private set;}public long AreaId{get;private set;}public string Name{get;private set;}=string.Empty;public bool IsActive{get;private set;}public static Warehouse Create(Guid tenantId,long areaId,string name)=>new(Guid.NewGuid(),tenantId,areaId,name);}

@@ -1,0 +1,3 @@
+using EEMS.Modules.Candidates.Infrastructure;using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;using Microsoft.Extensions.DependencyInjection;
+namespace EEMS.Modules.Candidates;
+public static class CandidatesModule{public static IServiceCollection AddCandidatesModule(this IServiceCollection services,IConfiguration configuration){var connection=configuration.GetConnectionString("EemsDatabase");if(string.IsNullOrWhiteSpace(connection))throw new InvalidOperationException("ConnectionStrings:EemsDatabase is required.");services.AddDbContext<CandidatesDbContext>(x=>x.UseNpgsql(connection));return services;}}

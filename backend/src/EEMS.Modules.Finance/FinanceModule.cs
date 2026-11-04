@@ -1,0 +1,3 @@
+using EEMS.Modules.Finance.Infrastructure;using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;using Microsoft.Extensions.DependencyInjection;
+namespace EEMS.Modules.Finance;
+public static class FinanceModule{public static IServiceCollection AddFinanceModule(this IServiceCollection services,IConfiguration configuration){var connection=configuration.GetConnectionString("EemsDatabase");if(string.IsNullOrWhiteSpace(connection))throw new InvalidOperationException("ConnectionStrings:EemsDatabase is required.");services.AddDbContext<FinanceDbContext>(x=>x.UseNpgsql(connection));return services;}}

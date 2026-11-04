@@ -1,0 +1,3 @@
+using EEMS.SharedKernel.Domain;
+namespace EEMS.Modules.Inventory.Domain;
+public sealed class AllocationState:Entity<short>{private AllocationState(){}private AllocationState(short id,string code,string name,bool isTerminal){if(id<=0)throw new ArgumentOutOfRangeException(nameof(id));Id=id;Code=InventoryRules.Text(code,40);Name=InventoryRules.Text(name,100);IsTerminal=isTerminal;IsActive=true;}public string Code{get;private set;}=string.Empty;public string Name{get;private set;}=string.Empty;public bool IsTerminal{get;private set;}public bool IsActive{get;private set;}public static AllocationState Create(short id,string code,string name,bool terminal=false)=>new(id,code,name,terminal);}

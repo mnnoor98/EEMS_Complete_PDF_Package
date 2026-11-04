@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EEMS.SharedKernel\EEMS.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Tenants\EEMS.Modules.Tenants.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Identity\EEMS.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Geography\EEMS.Modules.Geography.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Elections\EEMS.Modules.Elections.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Candidates\EEMS.Modules.Candidates.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Polling\EEMS.Modules.Polling.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Teams\EEMS.Modules.Teams.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Events\EEMS.Modules.Events.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Finance\EEMS.Modules.Finance.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Inventory\EEMS.Modules.Inventory.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Operations\EEMS.Modules.Operations.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Results\EEMS.Modules.Results.csproj" />
+    <ProjectReference Include="..\..\src\EEMS.Modules.Reporting\EEMS.Modules.Reporting.csproj" />
+  </ItemGroup>
+
+</Project>

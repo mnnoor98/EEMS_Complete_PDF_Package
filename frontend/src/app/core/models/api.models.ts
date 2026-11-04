@@ -1,0 +1,16 @@
+export interface TokenResponse{accessToken:string;accessTokenExpiresAtUtc:string;refreshToken:string;refreshTokenExpiresAtUtc:string;passwordChangeRequired:boolean}
+export interface ElectionSummary{electionId:string;name:string;electionTypeId:number;areaId:number;lifecycleStateId:number;electionDate:string;version:number}
+export interface TeamSummary{teamId:string;areaId:number;name:string;isActive:boolean;createdAtUtc:string}
+export interface TeamMemberSummary{userId:string;displayName:string;username:string;responsibility:string;joinedAtUtc:string;isActive:boolean}
+export interface TaskStateSummary{id:number;code:string;name:string;isTerminal:boolean} export interface TaskPrioritySummary{id:number;code:string;name:string;rank:number}
+export interface WorkforceLookups{taskStates:TaskStateSummary[];taskPriorities:TaskPrioritySummary[]}
+export interface TeamTaskSummary{taskId:string;teamId:string|null;assigneeUserId:string|null;stateId:number;priorityId:number;title:string;dueAtUtc:string|null;createdAtUtc:string;version:number}
+export interface TrainingSummary{trainingId:string;title:string;startsAtUtc:string;endsAtUtc:string}
+export interface AgentAssignmentSummary{assignmentId:string;electionCenterId:string;userId:string;displayName:string;username:string;startsAtUtc:string;endsAtUtc:string;isActive:boolean}
+export interface UserSummary{userId:string;username:string;displayName:string;email:string|null;isActive:boolean;roleCodes:string[]}
+export interface PagedResult<T>{items:T[];totalCount:number;page:number;pageSize:number}
+export interface CenterDirectoryItem{electionCenterId:string;centerId:string;areaId:number;code:string;name:string;address:string|null;isVerified:boolean;boothCount:number;activeAgentCount:number}
+export interface BoothSummary{boothId:string;code:string;name:string;isActive:boolean} export interface CenterAgentSummary{assignmentId:string;userId:string;displayName:string;startsAtUtc:string;endsAtUtc:string;isActive:boolean}
+export interface ChecklistItemSummary{itemId:string;requirement:string;isComplete:boolean;completedByUserId:string|null;completedAtUtc:string|null} export interface ChecklistSummary{checklistId:string;name:string;stateId:number;version:number;items:ChecklistItemSummary[]}
+export interface VerificationSummary{verificationId:string;verifiedByUserId:string;verifiedBy:string;verifiedAtUtc:string} export interface CenterDetail{center:CenterDirectoryItem;booths:BoothSummary[];agents:CenterAgentSummary[];checklists:ChecklistSummary[];verificationHistory:VerificationSummary[]}
+export interface ReadinessStateSummary{id:number;code:string;name:string;rank:number} export interface PollingLookups{readinessStates:ReadinessStateSummary[]}

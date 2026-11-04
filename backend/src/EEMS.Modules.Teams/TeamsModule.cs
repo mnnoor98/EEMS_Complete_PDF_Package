@@ -1,0 +1,2 @@
+using EEMS.Modules.Teams.Infrastructure;using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;using Microsoft.Extensions.DependencyInjection;
+namespace EEMS.Modules.Teams;public static class TeamsModule{public static IServiceCollection AddTeamsModule(this IServiceCollection s,IConfiguration c){var x=c.GetConnectionString("EemsDatabase");if(string.IsNullOrWhiteSpace(x))throw new InvalidOperationException("ConnectionStrings:EemsDatabase is required.");s.AddDbContext<TeamsDbContext>(o=>o.UseNpgsql(x));return s;}}

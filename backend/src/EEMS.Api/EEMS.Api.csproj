@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EEMS.Modules.Tenants\EEMS.Modules.Tenants.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Identity\EEMS.Modules.Identity.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Geography\EEMS.Modules.Geography.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Elections\EEMS.Modules.Elections.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Candidates\EEMS.Modules.Candidates.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Polling\EEMS.Modules.Polling.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Teams\EEMS.Modules.Teams.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Events\EEMS.Modules.Events.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Finance\EEMS.Modules.Finance.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Inventory\EEMS.Modules.Inventory.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Operations\EEMS.Modules.Operations.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Results\EEMS.Modules.Results.csproj" />
+    <ProjectReference Include="..\EEMS.Modules.Reporting\EEMS.Modules.Reporting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.21">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.21" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.21" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <UserSecretsId>eems-api-local-development</UserSecretsId>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,125 @@
+using EEMS.Modules.Identity.Domain;
+using EEMS.Modules.Identity.Infrastructure;
+using EEMS.SharedKernel.Tenancy;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace EEMS.Api.Administration;
+
+public sealed class IdentityAdministrationService(
+    IdentityDbContext dbContext,
+    ITenantContext tenantContext,
+    IPasswordHasher<User> passwordHasher)
+{
+    public async Task<IReadOnlyList<UserSummary>> GetUsersAsync(CancellationToken cancellationToken) =>
+        await (from membership in dbContext.TenantUsers
+               join user in dbContext.Users on membership.UserId equals user.Id
+               where membership.TenantId == tenantContext.TenantId
+               orderby user.DisplayName
+               select new UserSummary(user.Id, user.ExternalSubject, user.DisplayName, user.Email, membership.IsActive))
+            .AsNoTracking().ToListAsync(cancellationToken);
+
+    public async Task<UserSummary?> CreateUserAsync(CreateUserCommand command, CancellationToken cancellationToken)
+    {
+        var username = command.Username.Trim();
+        if (await dbContext.Users.AnyAsync(item => item.ExternalSubject == username, cancellationToken)) return null;
+        var user = User.Create(username, command.DisplayName, command.Email);
+        dbContext.Users.Add(user);
+        dbContext.TenantUsers.Add(TenantUser.Create(tenantContext.TenantId, user.Id));
+        dbContext.PasswordCredentials.Add(PasswordCredential.Create(
+            user.Id,
+            passwordHasher.HashPassword(user, command.InitialPassword)));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new UserSummary(user.Id, user.ExternalSubject, user.DisplayName, user.Email, true);
+    }
+
+    public async Task<bool> SetUserActiveAsync(Guid userId, bool active, CancellationToken cancellationToken)
+    {
+        var membership = await dbContext.TenantUsers.SingleOrDefaultAsync(
+            item => item.TenantId == tenantContext.TenantId && item.UserId == userId, cancellationToken);
+        if (membership is null) return false;
+        if (active) membership.Enable(); else membership.Disable();
+        if (!active)
+        {
+            var tokens = await dbContext.RefreshTokens
+                .Where(item => item.TenantId == tenantContext.TenantId && item.UserId == userId && item.RevokedAtUtc == null)
+                .ToListAsync(cancellationToken);
+            foreach (var token in tokens) token.Revoke();
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<IReadOnlyList<RoleSummary>> GetRolesAsync(CancellationToken cancellationToken)
+    {
+        var roles = await dbContext.Roles.Where(item => item.TenantId == tenantContext.TenantId)
+            .OrderBy(item => item.Name).AsNoTracking().ToListAsync(cancellationToken);
+        var assignments = await (from rolePermission in dbContext.RolePermissions
+                                 join permission in dbContext.Permissions on rolePermission.PermissionId equals permission.Id
+                                 where rolePermission.TenantId == tenantContext.TenantId
+                                 select new { rolePermission.RoleId, permission.Code })
+            .AsNoTracking().ToListAsync(cancellationToken);
+        return roles.Select(role => new RoleSummary(
+            role.Id,
+            role.Code,
+            role.Name,
+            role.IsActive,
+            assignments.Where(item => item.RoleId == role.Id).Select(item => item.Code).Order().ToArray())).ToArray();
+    }
+
+    public async Task<RoleSummary?> CreateRoleAsync(string code, string name, CancellationToken cancellationToken)
+    {
+        var normalized = code.Trim().ToUpperInvariant();
+        if (await dbContext.Roles.AnyAsync(
+                item => item.TenantId == tenantContext.TenantId && item.Code == normalized, cancellationToken)) return null;
+        var role = Role.Create(tenantContext.TenantId, normalized, name);
+        dbContext.Roles.Add(role);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new RoleSummary(role.Id, role.Code, role.Name, role.IsActive, []);
+    }
+
+    public async Task<bool> AssignPermissionAsync(Guid roleId, string permissionCode, CancellationToken cancellationToken)
+    {
+        var roleExists = await dbContext.Roles.AnyAsync(
+            item => item.TenantId == tenantContext.TenantId && item.Id == roleId, cancellationToken);
+        var normalized = permissionCode.Trim().ToLowerInvariant();
+        var permission = await dbContext.Permissions.SingleOrDefaultAsync(item => item.Code == normalized, cancellationToken);
+        if (!roleExists || permission is null) return false;
+        if (!await dbContext.RolePermissions.AnyAsync(item => item.TenantId == tenantContext.TenantId &&
+                                                               item.RoleId == roleId && item.PermissionId == permission.Id,
+                cancellationToken))
+        {
+            dbContext.RolePermissions.Add(new RolePermission(tenantContext.TenantId, roleId, permission.Id));
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        return true;
+    }
+
+    public async Task<bool> AssignRoleAsync(Guid userId, Guid roleId, CancellationToken cancellationToken)
+    {
+        var userExists = await dbContext.TenantUsers.AnyAsync(
+            item => item.TenantId == tenantContext.TenantId && item.UserId == userId, cancellationToken);
+        var roleExists = await dbContext.Roles.AnyAsync(
+            item => item.TenantId == tenantContext.TenantId && item.Id == roleId, cancellationToken);
+        if (!userExists || !roleExists) return false;
+        if (!await dbContext.UserRoles.AnyAsync(item => item.TenantId == tenantContext.TenantId &&
+                                                        item.UserId == userId && item.RoleId == roleId,
+                cancellationToken))
+        {
+            dbContext.UserRoles.Add(new UserRole(tenantContext.TenantId, userId, roleId));
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        return true;
+    }
+
+    public async Task<AdministrationDashboard> GetDashboardAsync(CancellationToken cancellationToken) =>
+        new(
+            await dbContext.TenantUsers.CountAsync(item => item.TenantId == tenantContext.TenantId, cancellationToken),
+            await dbContext.TenantUsers.CountAsync(item => item.TenantId == tenantContext.TenantId && item.IsActive, cancellationToken),
+            await dbContext.Roles.CountAsync(item => item.TenantId == tenantContext.TenantId && item.IsActive, cancellationToken));
+}
+
+public sealed record CreateUserCommand(string Username, string DisplayName, string? Email, string InitialPassword);
+public sealed record UserSummary(Guid UserId, string Username, string DisplayName, string? Email, bool IsActive);
+public sealed record RoleSummary(Guid RoleId, string Code, string Name, bool IsActive, IReadOnlyList<string> Permissions);
+public sealed record AdministrationDashboard(int TotalUsers, int ActiveUsers, int ActiveRoles);

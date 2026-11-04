@@ -1,0 +1,2 @@
+import { inject } from '@angular/core'; import { ActivatedRouteSnapshot, CanActivateFn, Router } from '@angular/router'; import { AuthService } from '../auth/auth.service';
+export const authGuard:CanActivateFn=()=>{const auth=inject(AuthService);return auth.authenticated()||inject(Router).createUrlTree(['/login'])};export const permissionGuard:CanActivateFn=(route:ActivatedRouteSnapshot)=>{const permission=route.data['permission'] as string;return inject(AuthService).hasPermission(permission)||inject(Router).createUrlTree(['/forbidden'])};

@@ -1,0 +1,197 @@
+using EEMS.Modules.Elections.Infrastructure;
+using EEMS.Modules.Geography.Infrastructure;
+using EEMS.Modules.Identity.Infrastructure;
+using EEMS.Modules.Polling.Domain;
+using EEMS.Modules.Polling.Infrastructure;
+using EEMS.Modules.Teams.Domain;
+using EEMS.Modules.Teams.Infrastructure;
+using EEMS.SharedKernel.Tenancy;
+using Microsoft.EntityFrameworkCore;
+
+namespace EEMS.Api.Workforce;
+
+public sealed class WorkforceOperationsService(
+    TeamsDbContext teamsDb,
+    PollingDbContext pollingDb,
+    ElectionsDbContext electionsDb,
+    GeographyDbContext geographyDb,
+    IdentityDbContext identityDb,
+    ITenantContext tenantContext)
+{
+    public async Task<WorkforceLookups> GetLookupsAsync(CancellationToken token) => new(
+        await teamsDb.TaskStates.Where(x => x.IsActive).OrderBy(x => x.Id)
+            .Select(x => new TaskStateSummary(x.Id, x.Code, x.Name, x.IsTerminal)).ToListAsync(token),
+        await teamsDb.TaskPriorities.Where(x => x.IsActive).OrderBy(x => x.Rank)
+            .Select(x => new TaskPrioritySummary(x.Id, x.Code, x.Name, x.Rank)).ToListAsync(token));
+
+    public async Task<IReadOnlyList<TeamSummary>> GetTeamsAsync(Guid electionId, CancellationToken token) =>
+        await teamsDb.Teams.Where(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId)
+            .OrderBy(x => x.Name)
+            .Select(x => new TeamSummary(x.Id, x.AreaId, x.Name, x.IsActive, x.CreatedAtUtc))
+            .ToListAsync(token);
+
+    public async Task<TeamSummary?> CreateTeamAsync(Guid electionId, CreateTeamCommand command, CancellationToken token)
+    {
+        if (!await ElectionExistsAsync(electionId, token) || !await geographyDb.Areas.AnyAsync(x => x.Id == command.AreaId && x.IsActive, token)) return null;
+        var team = Team.Create(tenantContext.TenantId, electionId, command.AreaId, command.Name);
+        teamsDb.Teams.Add(team);
+        await teamsDb.SaveChangesAsync(token);
+        return new TeamSummary(team.Id, team.AreaId, team.Name, team.IsActive, team.CreatedAtUtc);
+    }
+
+    public async Task<IReadOnlyList<TeamMemberSummary>> GetTeamMembersAsync(Guid electionId, Guid teamId, CancellationToken token)
+    {
+        if (!await teamsDb.Teams.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.Id == teamId, token)) return [];
+        var members = await teamsDb.TeamMembers.Where(x => x.TenantId == tenantContext.TenantId && x.TeamId == teamId).ToListAsync(token);
+        var users = await GetUsersAsync(members.Select(x => x.UserId), token);
+        return members.Where(x => users.ContainsKey(x.UserId)).Select(x =>
+        {
+            var user = users[x.UserId];
+            return new TeamMemberSummary(x.UserId, user.DisplayName, user.ExternalSubject, x.Responsibility, x.JoinedAtUtc, x.IsActive);
+        }).OrderBy(x => x.DisplayName).ToList();
+    }
+
+    public async Task<TeamMemberSummary?> AddTeamMemberAsync(Guid electionId, Guid teamId, AddTeamMemberCommand command, CancellationToken token)
+    {
+        var teamExists = await teamsDb.Teams.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.Id == teamId && x.IsActive, token);
+        var user = await GetActiveTenantUserAsync(command.UserId, token);
+        if (!teamExists || user is null) return null;
+        if (await teamsDb.TeamMembers.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.TeamId == teamId && x.UserId == command.UserId, token)) return null;
+        var member = new TeamMember(tenantContext.TenantId, teamId, command.UserId, command.Responsibility);
+        teamsDb.TeamMembers.Add(member);
+        await teamsDb.SaveChangesAsync(token);
+        return new TeamMemberSummary(member.UserId, user.DisplayName, user.ExternalSubject, member.Responsibility, member.JoinedAtUtc, member.IsActive);
+    }
+
+    public async Task<IReadOnlyList<TeamTaskSummary>> GetTasksAsync(Guid electionId, CancellationToken token) =>
+        await teamsDb.Tasks.Where(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId)
+            .OrderBy(x => x.DueAtUtc).ThenBy(x => x.Title)
+            .Select(x => new TeamTaskSummary(x.Id, x.TeamId, x.AssigneeUserId, x.StateId, x.PriorityId, x.Title, x.DueAtUtc, x.CreatedAtUtc, x.Version))
+            .ToListAsync(token);
+
+    public async Task<TeamTaskSummary?> CreateTaskAsync(Guid electionId, CreateTaskCommand command, CancellationToken token)
+    {
+        if (command.TeamId is null && command.AssigneeUserId is null ||
+            !await ElectionExistsAsync(electionId, token) ||
+            !await teamsDb.TaskStates.AnyAsync(x => x.Id == command.StateId && x.IsActive, token) ||
+            !await teamsDb.TaskPriorities.AnyAsync(x => x.Id == command.PriorityId && x.IsActive, token) ||
+            command.TeamId is not null && !await teamsDb.Teams.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.Id == command.TeamId && x.IsActive, token) ||
+            command.AssigneeUserId is not null && await GetActiveTenantUserAsync(command.AssigneeUserId.Value, token) is null) return null;
+        var task = TeamTask.Create(tenantContext.TenantId, electionId, command.TeamId, command.AssigneeUserId, command.StateId, command.PriorityId, command.Title, command.DueAtUtc);
+        teamsDb.Tasks.Add(task);
+        await teamsDb.SaveChangesAsync(token);
+        return ToSummary(task);
+    }
+
+    public async Task<TeamTaskSummary?> MoveTaskAsync(Guid electionId, Guid taskId, short stateId, int expectedVersion, CancellationToken token)
+    {
+        var task = await teamsDb.Tasks.SingleOrDefaultAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.Id == taskId, token);
+        if (task is null || task.Version != expectedVersion || !await teamsDb.TaskStates.AnyAsync(x => x.Id == stateId && x.IsActive, token)) return null;
+        task.MoveTo(stateId);
+        await teamsDb.SaveChangesAsync(token);
+        return ToSummary(task);
+    }
+
+    public async Task<IReadOnlyList<TrainingSummary>> GetTrainingsAsync(Guid electionId, CancellationToken token) =>
+        await teamsDb.Trainings.Where(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId)
+            .OrderBy(x => x.StartsAtUtc)
+            .Select(x => new TrainingSummary(x.Id, x.Title, x.StartsAtUtc, x.EndsAtUtc))
+            .ToListAsync(token);
+
+    public async Task<TrainingSummary?> CreateTrainingAsync(Guid electionId, CreateTrainingCommand command, CancellationToken token)
+    {
+        if (!await ElectionExistsAsync(electionId, token) || command.EndsAtUtc <= command.StartsAtUtc) return null;
+        var training = Training.Create(tenantContext.TenantId, electionId, command.Title, command.StartsAtUtc, command.EndsAtUtc);
+        teamsDb.Trainings.Add(training);
+        await teamsDb.SaveChangesAsync(token);
+        return new TrainingSummary(training.Id, training.Title, training.StartsAtUtc, training.EndsAtUtc);
+    }
+
+    public async Task<IReadOnlyList<AttendanceSummary>> GetAttendanceAsync(Guid electionId, Guid trainingId, CancellationToken token)
+    {
+        if (!await teamsDb.Trainings.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.Id == trainingId, token)) return [];
+        var attendance = await teamsDb.Attendances.Where(x => x.TenantId == tenantContext.TenantId && x.TrainingId == trainingId).ToListAsync(token);
+        var users = await GetUsersAsync(attendance.Select(x => x.UserId), token);
+        return attendance.Where(x => users.ContainsKey(x.UserId)).Select(x =>
+        {
+            var user = users[x.UserId];
+            return new AttendanceSummary(x.UserId, user.DisplayName, user.ExternalSubject, x.RecordedAtUtc);
+        }).OrderBy(x => x.DisplayName).ToList();
+    }
+
+    public async Task<AttendanceSummary?> RecordAttendanceAsync(Guid electionId, Guid trainingId, Guid userId, DateTimeOffset? recordedAtUtc, CancellationToken token)
+    {
+        var trainingExists = await teamsDb.Trainings.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.Id == trainingId, token);
+        var user = await GetActiveTenantUserAsync(userId, token);
+        if (!trainingExists || user is null || await teamsDb.Attendances.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.TrainingId == trainingId && x.UserId == userId, token)) return null;
+        var attendance = new Attendance(tenantContext.TenantId, trainingId, userId, recordedAtUtc ?? DateTimeOffset.UtcNow);
+        teamsDb.Attendances.Add(attendance);
+        await teamsDb.SaveChangesAsync(token);
+        return new AttendanceSummary(user.Id, user.DisplayName, user.ExternalSubject, attendance.RecordedAtUtc);
+    }
+
+    public async Task<IReadOnlyList<AgentAssignmentSummary>> GetAgentAssignmentsAsync(Guid electionId, CancellationToken token)
+    {
+        var centerIds = await pollingDb.ElectionCenters
+            .Where(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId)
+            .Select(x => x.Id).ToListAsync(token);
+        var assignments = await pollingDb.AgentAssignments
+            .Where(x => x.TenantId == tenantContext.TenantId && centerIds.Contains(x.ElectionCenterId))
+            .ToListAsync(token);
+        var users = await GetUsersAsync(assignments.Select(x => x.UserId), token);
+        return assignments.Where(x => users.ContainsKey(x.UserId)).Select(x =>
+        {
+            var user = users[x.UserId];
+            return new AgentAssignmentSummary(x.Id, x.ElectionCenterId, x.UserId, user.DisplayName, user.ExternalSubject, x.StartsAtUtc, x.EndsAtUtc, x.IsActive);
+        }).OrderBy(x => x.StartsAtUtc).ToList();
+    }
+
+    public async Task<AgentAssignmentSummary?> AssignAgentAsync(Guid electionId, AssignAgentCommand command, CancellationToken token)
+    {
+        var centerExists = await pollingDb.ElectionCenters.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.Id == command.ElectionCenterId, token);
+        var user = await GetActiveTenantUserAsync(command.UserId, token);
+        var duplicate = await pollingDb.AgentAssignments.AnyAsync(x => x.TenantId == tenantContext.TenantId &&
+            x.ElectionCenterId == command.ElectionCenterId && x.UserId == command.UserId && x.StartsAtUtc == command.StartsAtUtc, token);
+        if (!centerExists || user is null || duplicate || command.EndsAtUtc <= command.StartsAtUtc) return null;
+        var assignment = AgentAssignment.Create(tenantContext.TenantId, command.ElectionCenterId, command.UserId, command.StartsAtUtc, command.EndsAtUtc);
+        pollingDb.AgentAssignments.Add(assignment);
+        await pollingDb.SaveChangesAsync(token);
+        return new AgentAssignmentSummary(assignment.Id, assignment.ElectionCenterId, assignment.UserId, user.DisplayName, user.ExternalSubject, assignment.StartsAtUtc, assignment.EndsAtUtc, assignment.IsActive);
+    }
+
+    private Task<bool> ElectionExistsAsync(Guid electionId, CancellationToken token) =>
+        electionsDb.Elections.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.Id == electionId, token);
+
+    private async Task<EEMS.Modules.Identity.Domain.User?> GetActiveTenantUserAsync(Guid userId, CancellationToken token)
+    {
+        var tenantId = tenantContext.TenantId;
+        return await (from user in identityDb.Users
+                      join membership in identityDb.TenantUsers on user.Id equals membership.UserId
+                      where user.Id == userId && user.IsActive && membership.TenantId == tenantId && membership.IsActive
+                      select user).SingleOrDefaultAsync(token);
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, EEMS.Modules.Identity.Domain.User>> GetUsersAsync(IEnumerable<Guid> userIds, CancellationToken token)
+    {
+        var ids = userIds.Distinct().ToArray();
+        return await identityDb.Users.Where(x => ids.Contains(x.Id)).ToDictionaryAsync(x => x.Id, token);
+    }
+
+    private static TeamTaskSummary ToSummary(TeamTask task) =>
+        new(task.Id, task.TeamId, task.AssigneeUserId, task.StateId, task.PriorityId, task.Title, task.DueAtUtc, task.CreatedAtUtc, task.Version);
+}
+
+public sealed record WorkforceLookups(IReadOnlyList<TaskStateSummary> TaskStates, IReadOnlyList<TaskPrioritySummary> TaskPriorities);
+public sealed record TaskStateSummary(short Id, string Code, string Name, bool IsTerminal);
+public sealed record TaskPrioritySummary(short Id, string Code, string Name, short Rank);
+public sealed record TeamSummary(Guid TeamId, long AreaId, string Name, bool IsActive, DateTimeOffset CreatedAtUtc);
+public sealed record TeamMemberSummary(Guid UserId, string DisplayName, string Username, string Responsibility, DateTimeOffset JoinedAtUtc, bool IsActive);
+public sealed record TeamTaskSummary(Guid TaskId, Guid? TeamId, Guid? AssigneeUserId, short StateId, short PriorityId, string Title, DateTimeOffset? DueAtUtc, DateTimeOffset CreatedAtUtc, int Version);
+public sealed record TrainingSummary(Guid TrainingId, string Title, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc);
+public sealed record AttendanceSummary(Guid UserId, string DisplayName, string Username, DateTimeOffset RecordedAtUtc);
+public sealed record AgentAssignmentSummary(Guid AssignmentId, Guid ElectionCenterId, Guid UserId, string DisplayName, string Username, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc, bool IsActive);
+public sealed record CreateTeamCommand(long AreaId, string Name);
+public sealed record AddTeamMemberCommand(Guid UserId, string Responsibility);
+public sealed record CreateTaskCommand(Guid? TeamId, Guid? AssigneeUserId, short StateId, short PriorityId, string Title, DateTimeOffset? DueAtUtc);
+public sealed record CreateTrainingCommand(string Title, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc);
+public sealed record AssignAgentCommand(Guid ElectionCenterId, Guid UserId, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc);

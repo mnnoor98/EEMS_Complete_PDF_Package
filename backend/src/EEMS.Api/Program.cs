@@ -33,6 +33,7 @@ using EEMS.Api.Results;
 using EEMS.Api.Inventory;
 using EEMS.Api.Finance;
 using EEMS.Api.Events;
+using EEMS.Api.Dashboard;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +57,7 @@ builder.Services.AddScoped<ResultsReportingOperationsService>();
 builder.Services.AddScoped<InventoryOperationsService>();
 builder.Services.AddScoped<FinanceOperationsService>();
 builder.Services.AddScoped<EventOperationsService>();
+builder.Services.AddScoped<OperationsDashboardService>();
 builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddApiOpenApi();
 builder.Services.AddInitialBootstrap(builder.Configuration);

@@ -3,7 +3,8 @@ import {authGuard,permissionGuard} from './core/guards/auth.guard';
 export const routes:Routes=[
  {path:'login',loadComponent:()=>import('./features/auth/login.page').then(m=>m.LoginPage)},
  {path:'',canActivate:[authGuard],loadComponent:()=>import('./layout/shell/shell.component').then(m=>m.ShellComponent),children:[
-  {path:'',pathMatch:'full',redirectTo:'elections'},
+  {path:'',pathMatch:'full',redirectTo:'dashboard'},
+  {path:'dashboard',canActivate:[permissionGuard],data:{permission:'dashboard.read'},loadComponent:()=>import('./features/dashboard/operations-dashboard.page').then(m=>m.OperationsDashboardPage)},
   {path:'elections',loadComponent:()=>import('./features/elections/election-list.page').then(m=>m.ElectionListPage)},
   {path:'elections/:electionId/candidates',canActivate:[permissionGuard],data:{permission:'elections.read'},loadComponent:()=>import('./features/candidates/candidate-list.page').then(m=>m.CandidateListPage)},
   {path:'elections/:electionId/workforce',canActivate:[permissionGuard],data:{permission:'workforce.read'},loadComponent:()=>import('./features/workforce/workforce-dashboard.page').then(m=>m.WorkforceDashboardPage)},

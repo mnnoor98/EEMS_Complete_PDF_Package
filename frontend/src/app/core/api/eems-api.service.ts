@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
-  AdministrationDashboard, AllocationSummary, BudgetLineSummary, BudgetSummary, CampaignEventSummary, EventWorkspace, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MeetingSummary, MovementSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VenueSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
+  AdministrationDashboard, AllocationSummary, BudgetLineSummary, BudgetSummary, CampaignEventSummary, EventWorkspace, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MeetingSummary, MovementSummary, OperationsDashboard, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VenueSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
 } from '../models/api.models';
 
 @Injectable({providedIn: 'root'})
@@ -56,6 +56,7 @@ export class EemsApiService {
   createMeeting(id:string,body:object){return this.http.post<MeetingSummary>(`/api/v1/elections/${id}/events/meetings`,body)}
   addMeetingParticipant(id:string,meetingId:string,userId:string){return this.http.post<void>(`/api/v1/elections/${id}/events/meetings/${meetingId}/participants/${userId}`,{})}
   markMeetingAttendance(id:string,meetingId:string,userId:string){return this.http.put<void>(`/api/v1/elections/${id}/events/meetings/${meetingId}/participants/${userId}/attendance`,{})}
+  getOperationsDashboard(){return this.http.get<OperationsDashboard>('/api/v1/dashboard')}
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }
   createTeam(id: string, body: {areaId: number; name: string}) { return this.http.post<TeamSummary>(`/api/v1/elections/${id}/workforce/teams`, body); }

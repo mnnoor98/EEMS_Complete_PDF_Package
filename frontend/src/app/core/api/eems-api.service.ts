@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
-  AdministrationDashboard, ExportSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WorkforceLookups
+  AdministrationDashboard, AllocationSummary, ExportSummary, InventoryLookups, ItemSummary, MovementSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
 } from '../models/api.models';
 
 @Injectable({providedIn: 'root'})
@@ -32,6 +32,16 @@ export class EemsApiService {
   verifyResult(electionId:string,submission:ResultSubmissionSummary,resultingStateId:number,note:string) { return this.http.post<ResultSubmissionSummary>(`/api/v1/elections/${electionId}/results/${submission.submissionId}/verify`,{resultingStateId,expectedVersion:submission.version,note}); }
   getExports(electionId:string) { return this.http.get<ExportSummary[]>(`/api/v1/elections/${electionId}/results/exports`); }
   requestExport(electionId:string,reportType:string,format:string) { return this.http.post<ExportSummary>(`/api/v1/elections/${electionId}/results/exports`,{reportType,format}); }
+  getInventoryLookups(id:string){return this.http.get<InventoryLookups>(`/api/v1/elections/${id}/inventory/lookups`)}
+  getWarehouses(id:string){return this.http.get<WarehouseSummary[]>(`/api/v1/elections/${id}/inventory/warehouses`)}
+  createWarehouse(id:string,body:{areaId:number;name:string}){return this.http.post<WarehouseSummary>(`/api/v1/elections/${id}/inventory/warehouses`,body)}
+  getInventoryItems(id:string){return this.http.get<ItemSummary[]>(`/api/v1/elections/${id}/inventory/items`)}
+  createInventoryItem(id:string,body:{sku:string;name:string;unit:string}){return this.http.post<ItemSummary>(`/api/v1/elections/${id}/inventory/items`,body)}
+  getMovements(id:string){return this.http.get<MovementSummary[]>(`/api/v1/elections/${id}/inventory/movements`)}
+  recordMovement(id:string,body:object){return this.http.post<MovementSummary>(`/api/v1/elections/${id}/inventory/movements`,body)}
+  getAllocations(id:string){return this.http.get<AllocationSummary[]>(`/api/v1/elections/${id}/inventory/allocations`)}
+  createAllocation(id:string,body:object){return this.http.post<AllocationSummary>(`/api/v1/elections/${id}/inventory/allocations`,body)}
+  acknowledgeAllocation(id:string,allocationId:string){return this.http.put<AllocationSummary>(`/api/v1/elections/${id}/inventory/allocations/${allocationId}/acknowledge`,{})}
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }
   createTeam(id: string, body: {areaId: number; name: string}) { return this.http.post<TeamSummary>(`/api/v1/elections/${id}/workforce/teams`, body); }

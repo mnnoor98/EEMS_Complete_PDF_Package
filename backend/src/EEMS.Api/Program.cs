@@ -30,6 +30,7 @@ using EEMS.Api.Authorization;
 using EEMS.Api.ReferenceData;
 using Microsoft.EntityFrameworkCore;
 using EEMS.Api.Results;
+using EEMS.Api.Inventory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,7 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<InventoryDbContext>().AddDbContextCheck<OperationsDbContext>().AddDbContextCheck<ResultsDbContext>().AddDbContextCheck<ReportingDbContext>();
 builder.Services.AddControllers();
 builder.Services.AddScoped<ResultsReportingOperationsService>();
+builder.Services.AddScoped<InventoryOperationsService>();
 builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddApiOpenApi();
 builder.Services.AddInitialBootstrap(builder.Configuration);

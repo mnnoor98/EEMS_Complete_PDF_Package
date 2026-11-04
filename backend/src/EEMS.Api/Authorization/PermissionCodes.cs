@@ -17,4 +17,6 @@ public static class PermissionCodes
     public const string ResultsManage = "results.manage";
     public const string ReportingRead = "reporting.read";
     public const string ReportingManage = "reporting.manage";
+    public const string InventoryRead = "inventory.read";
+    public const string InventoryManage = "inventory.manage";
 }

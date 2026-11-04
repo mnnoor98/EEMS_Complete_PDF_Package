@@ -40,6 +40,11 @@ public sealed class AdministrationController(IdentityAdministrationService admin
     public async Task<ActionResult<IReadOnlyList<RoleSummary>>> GetRoles(CancellationToken cancellationToken) =>
         Ok(await administration.GetRolesAsync(cancellationToken));
 
+    [HttpGet("permissions")]
+    [Authorize(Policy = PermissionCodes.RolesRead)]
+    public async Task<ActionResult<IReadOnlyList<PermissionSummary>>> GetPermissions(CancellationToken cancellationToken) =>
+        Ok(await administration.GetPermissionsAsync(cancellationToken));
+
     [HttpPost("roles")]
     [Authorize(Policy = PermissionCodes.RolesManage)]
     public async Task<ActionResult<RoleSummary>> CreateRole(CreateRoleRequest request, CancellationToken cancellationToken)

@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
-  TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WorkforceLookups
+  AdministrationDashboard, PermissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WorkforceLookups
 } from '../models/api.models';
 
 @Injectable({providedIn: 'root'})
@@ -18,6 +18,14 @@ export class EemsApiService {
   addCandidate(electionId: string, body: {name: string; externalReference: string | null; positionId: number; areaId: number; nominationReference: string | null}) { return this.http.post<CandidateSummary>(`/api/v1/elections/${electionId}/candidates`, body); }
   addElectionCenter(electionId: string, body: {areaId: number; code: string; name: string; address: string | null}) { return this.http.post<ElectionCenterSummary>(`/api/v1/elections/${electionId}/centers`, body); }
   getUsers() { return this.http.get<UserSummary[]>('/api/v1/admin/users'); }
+  createUser(body: {username:string;displayName:string;email:string|null;initialPassword:string}) { return this.http.post<UserSummary>('/api/v1/admin/users',body); }
+  setUserActive(userId:string,isActive:boolean) { return this.http.put<void>(`/api/v1/admin/users/${userId}/active`,{isActive}); }
+  getRoles() { return this.http.get<RoleSummary[]>('/api/v1/admin/roles'); }
+  createRole(body:{code:string;name:string}) { return this.http.post<RoleSummary>('/api/v1/admin/roles',body); }
+  assignRole(userId:string,roleId:string) { return this.http.post<void>(`/api/v1/admin/users/${userId}/roles/${roleId}`,{}); }
+  getPermissions() { return this.http.get<PermissionSummary[]>('/api/v1/admin/permissions'); }
+  assignPermission(roleId:string,permissionCode:string) { return this.http.post<void>(`/api/v1/admin/roles/${roleId}/permissions`,{permissionCode}); }
+  getAdministrationDashboard() { return this.http.get<AdministrationDashboard>('/api/v1/admin/dashboard'); }
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }
   createTeam(id: string, body: {areaId: number; name: string}) { return this.http.post<TeamSummary>(`/api/v1/elections/${id}/workforce/teams`, body); }

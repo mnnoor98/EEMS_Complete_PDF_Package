@@ -1,5 +1,6 @@
 using EEMS.Modules.Identity.Domain;
 using EEMS.Modules.Identity.Infrastructure;
+using EEMS.Modules.Reporting.Infrastructure;
 using EEMS.SharedKernel.Tenancy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -8,16 +9,24 @@ namespace EEMS.Api.Administration;
 
 public sealed class IdentityAdministrationService(
     IdentityDbContext dbContext,
+    ReportingDbContext reportingDbContext,
     ITenantContext tenantContext,
     IPasswordHasher<User> passwordHasher)
 {
-    public async Task<IReadOnlyList<UserSummary>> GetUsersAsync(CancellationToken cancellationToken) =>
-        await (from membership in dbContext.TenantUsers
+    public async Task<IReadOnlyList<UserSummary>> GetUsersAsync(CancellationToken cancellationToken)
+    {
+        var users = await (from membership in dbContext.TenantUsers
                join user in dbContext.Users on membership.UserId equals user.Id
                where membership.TenantId == tenantContext.TenantId
                orderby user.DisplayName
-               select new UserSummary(user.Id, user.ExternalSubject, user.DisplayName, user.Email, membership.IsActive))
+               select new { User = user, membership.IsActive })
             .AsNoTracking().ToListAsync(cancellationToken);
+        var roles = await (from assignment in dbContext.UserRoles join role in dbContext.Roles on assignment.RoleId equals role.Id
+                           where assignment.TenantId == tenantContext.TenantId
+                           select new { assignment.UserId, role.Code }).AsNoTracking().ToListAsync(cancellationToken);
+        return users.Select(item => new UserSummary(item.User.Id, item.User.ExternalSubject, item.User.DisplayName, item.User.Email, item.IsActive,
+            roles.Where(role => role.UserId == item.User.Id).Select(role => role.Code).Order().ToArray())).ToArray();
+    }
 
     public async Task<UserSummary?> CreateUserAsync(CreateUserCommand command, CancellationToken cancellationToken)
     {
@@ -30,7 +39,7 @@ public sealed class IdentityAdministrationService(
             user.Id,
             passwordHasher.HashPassword(user, command.InitialPassword)));
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new UserSummary(user.Id, user.ExternalSubject, user.DisplayName, user.Email, true);
+        return new UserSummary(user.Id, user.ExternalSubject, user.DisplayName, user.Email, true, []);
     }
 
     public async Task<bool> SetUserActiveAsync(Guid userId, bool active, CancellationToken cancellationToken)
@@ -66,6 +75,10 @@ public sealed class IdentityAdministrationService(
             role.IsActive,
             assignments.Where(item => item.RoleId == role.Id).Select(item => item.Code).Order().ToArray())).ToArray();
     }
+
+    public async Task<IReadOnlyList<PermissionSummary>> GetPermissionsAsync(CancellationToken cancellationToken) =>
+        await dbContext.Permissions.Where(item => item.IsActive).OrderBy(item => item.Module).ThenBy(item => item.Name)
+            .Select(item => new PermissionSummary(item.Code, item.Name, item.Module)).AsNoTracking().ToListAsync(cancellationToken);
 
     public async Task<RoleSummary?> CreateRoleAsync(string code, string name, CancellationToken cancellationToken)
     {
@@ -116,10 +129,14 @@ public sealed class IdentityAdministrationService(
         new(
             await dbContext.TenantUsers.CountAsync(item => item.TenantId == tenantContext.TenantId, cancellationToken),
             await dbContext.TenantUsers.CountAsync(item => item.TenantId == tenantContext.TenantId && item.IsActive, cancellationToken),
-            await dbContext.Roles.CountAsync(item => item.TenantId == tenantContext.TenantId && item.IsActive, cancellationToken));
+            await dbContext.Roles.CountAsync(item => item.TenantId == tenantContext.TenantId && item.IsActive, cancellationToken),
+            await reportingDbContext.SecurityEvents.Where(item => item.TenantId == tenantContext.TenantId).OrderByDescending(item => item.OccurredAtUtc).Take(25)
+                .Select(item => new SecurityEventSummary(item.Id, item.UserId, item.EventType, item.Source, item.Detail, item.CorrelationId, item.OccurredAtUtc)).ToListAsync(cancellationToken));
 }
 
 public sealed record CreateUserCommand(string Username, string DisplayName, string? Email, string InitialPassword);
-public sealed record UserSummary(Guid UserId, string Username, string DisplayName, string? Email, bool IsActive);
+public sealed record UserSummary(Guid UserId, string Username, string DisplayName, string? Email, bool IsActive, IReadOnlyList<string> RoleCodes);
 public sealed record RoleSummary(Guid RoleId, string Code, string Name, bool IsActive, IReadOnlyList<string> Permissions);
-public sealed record AdministrationDashboard(int TotalUsers, int ActiveUsers, int ActiveRoles);
+public sealed record PermissionSummary(string Code, string Name, string Module);
+public sealed record SecurityEventSummary(Guid SecurityEventId, Guid? UserId, string EventType, string Source, string Detail, string CorrelationId, DateTimeOffset OccurredAtUtc);
+public sealed record AdministrationDashboard(int TotalUsers, int ActiveUsers, int ActiveRoles, IReadOnlyList<SecurityEventSummary> RecentSecurityEvents);

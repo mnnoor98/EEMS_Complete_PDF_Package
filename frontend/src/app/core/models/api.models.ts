@@ -16,6 +16,10 @@ export interface TrainingSummary{trainingId:string;title:string;startsAtUtc:stri
 export interface AttendanceSummary{userId:string;displayName:string;username:string;recordedAtUtc:string}
 export interface AgentAssignmentSummary{assignmentId:string;electionCenterId:string;userId:string;displayName:string;username:string;startsAtUtc:string;endsAtUtc:string;isActive:boolean}
 export interface UserSummary{userId:string;username:string;displayName:string;email:string|null;isActive:boolean;roleCodes:string[]}
+export interface RoleSummary{roleId:string;code:string;name:string;isActive:boolean;permissions:string[]}
+export interface PermissionSummary{code:string;name:string;module:string}
+export interface SecurityEventSummary{securityEventId:string;userId:string|null;eventType:string;source:string;detail:string;correlationId:string;occurredAtUtc:string}
+export interface AdministrationDashboard{totalUsers:number;activeUsers:number;activeRoles:number;recentSecurityEvents:SecurityEventSummary[]}
 export interface PagedResult<T>{items:T[];totalCount:number;page:number;pageSize:number}
 export interface CenterDirectoryItem{electionCenterId:string;centerId:string;areaId:number;code:string;name:string;address:string|null;isVerified:boolean;boothCount:number;activeAgentCount:number}
 export interface ElectionCenterSummary{electionCenterId:string;centerId:string;areaId:number;code:string;name:string;address:string|null;isVerified:boolean}

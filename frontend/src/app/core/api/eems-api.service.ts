@@ -1,7 +1,7 @@
 import {inject, Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {
-  AgentAssignmentSummary, BoothSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
+  AgentAssignmentSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
   TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WorkforceLookups
 } from '../models/api.models';
@@ -14,6 +14,8 @@ export class EemsApiService {
   createElection(body: {electionTypeId: number; areaId: number; lifecycleStateId: number; name: string; electionDate: string}) { return this.http.post<ElectionSummary>('/api/v1/elections', body); }
   updateElection(election: ElectionSummary, body: {electionTypeId: number; areaId: number; name: string; electionDate: string}) { return this.http.put<ElectionSummary>(`/api/v1/elections/${election.electionId}`, {...body, expectedVersion: election.version}); }
   moveElection(election: ElectionSummary, lifecycleStateId: number) { return this.http.put<void>(`/api/v1/elections/${election.electionId}/lifecycle`, {lifecycleStateId, expectedVersion: election.version}); }
+  getCandidates(electionId: string) { return this.http.get<CandidateSummary[]>(`/api/v1/elections/${electionId}/candidates`); }
+  addCandidate(electionId: string, body: {name: string; externalReference: string | null; positionId: number; areaId: number; nominationReference: string | null}) { return this.http.post<CandidateSummary>(`/api/v1/elections/${electionId}/candidates`, body); }
   getUsers() { return this.http.get<UserSummary[]>('/api/v1/admin/users'); }
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }

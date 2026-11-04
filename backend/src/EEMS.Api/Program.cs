@@ -82,6 +82,22 @@ builder.Services.AddReportingModule(builder.Configuration);
 
 var app = builder.Build();
 
+if (app.Configuration.GetValue<bool>("Database:ApplyMigrations"))
+{
+    await using var migrationScope = app.Services.CreateAsyncScope();
+    var contexts = new DbContext[]
+    {
+        migrationScope.ServiceProvider.GetRequiredService<TenantsDbContext>(), migrationScope.ServiceProvider.GetRequiredService<IdentityDbContext>(),
+        migrationScope.ServiceProvider.GetRequiredService<GeographyDbContext>(), migrationScope.ServiceProvider.GetRequiredService<ElectionsDbContext>(),
+        migrationScope.ServiceProvider.GetRequiredService<CandidatesDbContext>(), migrationScope.ServiceProvider.GetRequiredService<PollingDbContext>(),
+        migrationScope.ServiceProvider.GetRequiredService<TeamsDbContext>(), migrationScope.ServiceProvider.GetRequiredService<EventsDbContext>(),
+        migrationScope.ServiceProvider.GetRequiredService<FinanceDbContext>(), migrationScope.ServiceProvider.GetRequiredService<InventoryDbContext>(),
+        migrationScope.ServiceProvider.GetRequiredService<OperationsDbContext>(), migrationScope.ServiceProvider.GetRequiredService<ResultsDbContext>(),
+        migrationScope.ServiceProvider.GetRequiredService<ReportingDbContext>()
+    };
+    foreach (var context in contexts) await context.Database.MigrateAsync();
+}
+
 await app.Services.BootstrapInitialAdminAsync();
 await app.Services.InitializeReferenceDataAsync();
 await app.Services.InitializePermissionAuthorizationAsync();

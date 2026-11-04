@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eems}
+      POSTGRES_USER: ${POSTGRES_USER:-eems_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - eems_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__EemsDatabase: Host=postgres;Port=5432;Database=${POSTGRES_DB:-eems};Username=${POSTGRES_USER:-eems_app};Password=${POSTGRES_PASSWORD}
+      Authentication__Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env}
+      Database__ApplyMigrations: "true"
+      Bootstrap__Enabled: ${BOOTSTRAP_ENABLED:-true}
+      Bootstrap__TenantCode: ${TENANT_CODE:-LOCAL_ELECTION}
+      Bootstrap__TenantName: ${TENANT_NAME:-Local Election}
+      Bootstrap__AdminUsername: ${ADMIN_USERNAME:-admin}
+      Bootstrap__AdminDisplayName: ${ADMIN_DISPLAY_NAME:-System Administrator}
+      Bootstrap__AdminEmail: ${ADMIN_EMAIL:-admin@example.local}
+      Bootstrap__AdminPassword: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health/live >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+    ports:
+      - "${EEMS_PORT:-8080}:8080"
+
+volumes:
+  eems_postgres:

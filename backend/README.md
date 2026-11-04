@@ -25,3 +25,5 @@ Tenant identifiers must come from verified server context. Client-supplied tenan
 - Use `/health/live` for process liveness and `/health/ready` for dependency readiness.
 - Terminate TLS at the ingress/reverse proxy; non-development environments emit HSTS and security headers.
 - Run database migrations as a controlled deployment step before starting new application instances.
+
+For the packaged stack, copy `.env.example` to `.env`, replace every secret, then run `docker compose up --build -d`. The Compose profile enables the opt-in startup migration gate for a single API instance. In scaled environments keep it disabled and run migrations as a separate deployment job.

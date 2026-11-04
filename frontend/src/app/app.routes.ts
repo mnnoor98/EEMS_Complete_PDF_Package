@@ -8,6 +8,8 @@ export const routes:Routes=[
   {path:'elections',loadComponent:()=>import('./features/elections/election-list.page').then(m=>m.ElectionListPage)},
   {path:'elections/:electionId/candidates',canActivate:[permissionGuard],data:{permission:'elections.read'},loadComponent:()=>import('./features/candidates/candidate-list.page').then(m=>m.CandidateListPage)},
   {path:'elections/:electionId/workforce',canActivate:[permissionGuard],data:{permission:'workforce.read'},loadComponent:()=>import('./features/workforce/workforce-dashboard.page').then(m=>m.WorkforceDashboardPage)},
+  {path:'elections/:electionId/workforce/teams',canActivate:[permissionGuard],data:{permission:'workforce.read'},loadComponent:()=>import('./features/workforce/workforce-teams.page').then(m=>m.WorkforceTeamsPage)},
+  {path:'elections/:electionId/workforce/teams/:teamId',canActivate:[permissionGuard],data:{permission:'workforce.read'},loadComponent:()=>import('./features/workforce/workforce-team-detail.page').then(m=>m.WorkforceTeamDetailPage)},
   {path:'elections/:electionId/centers',canActivate:[permissionGuard],data:{permission:'polling.read'},loadComponent:()=>import('./features/polling/polling-centers.page').then(m=>m.PollingCentersPage)},
   {path:'elections/:electionId/centers/:electionCenterId',canActivate:[permissionGuard],data:{permission:'polling.read'},loadComponent:()=>import('./features/polling/polling-center-detail.page').then(m=>m.PollingCenterDetailPage)},
   {path:'elections/:electionId/results',canActivate:[permissionGuard],data:{permission:'results.read'},loadComponent:()=>import('./features/results/results-reporting.page').then(m=>m.ResultsReportingPage)},

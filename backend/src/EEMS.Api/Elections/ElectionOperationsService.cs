@@ -104,6 +104,7 @@ public sealed class ElectionOperationsService(
             pollingDb.Centers.Add(center);
             await pollingDb.SaveChangesAsync(token);
         }
+        if (await pollingDb.ElectionCenters.AnyAsync(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId && x.CenterId == center.Id, token)) return null;
         var link = ElectionCenter.Create(tenantContext.TenantId, electionId, center.Id);
         pollingDb.ElectionCenters.Add(link);
         await pollingDb.SaveChangesAsync(token);

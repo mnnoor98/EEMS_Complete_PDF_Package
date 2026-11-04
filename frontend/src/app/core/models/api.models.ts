@@ -16,6 +16,7 @@ export interface AgentAssignmentSummary{assignmentId:string;electionCenterId:str
 export interface UserSummary{userId:string;username:string;displayName:string;email:string|null;isActive:boolean;roleCodes:string[]}
 export interface PagedResult<T>{items:T[];totalCount:number;page:number;pageSize:number}
 export interface CenterDirectoryItem{electionCenterId:string;centerId:string;areaId:number;code:string;name:string;address:string|null;isVerified:boolean;boothCount:number;activeAgentCount:number}
+export interface ElectionCenterSummary{electionCenterId:string;centerId:string;areaId:number;code:string;name:string;address:string|null;isVerified:boolean}
 export interface BoothSummary{boothId:string;code:string;name:string;isActive:boolean} export interface CenterAgentSummary{assignmentId:string;userId:string;displayName:string;startsAtUtc:string;endsAtUtc:string;isActive:boolean}
 export interface ChecklistItemSummary{itemId:string;requirement:string;isComplete:boolean;completedByUserId:string|null;completedAtUtc:string|null} export interface ChecklistSummary{checklistId:string;name:string;stateId:number;version:number;items:ChecklistItemSummary[]}
 export interface VerificationSummary{verificationId:string;verifiedByUserId:string;verifiedBy:string;verifiedAtUtc:string} export interface CenterDetail{center:CenterDirectoryItem;booths:BoothSummary[];agents:CenterAgentSummary[];checklists:ChecklistSummary[];verificationHistory:VerificationSummary[]}

@@ -12,6 +12,7 @@ public sealed class ElectionApiContractTests
     [InlineData(nameof(ElectionsController.UpdateElection), typeof(HttpPutAttribute))]
     [InlineData(nameof(ElectionsController.MoveElection), typeof(HttpPutAttribute))]
     [InlineData(nameof(ElectionsController.AddCandidate), typeof(HttpPostAttribute))]
+    [InlineData(nameof(ElectionsController.AddCenter), typeof(HttpPostAttribute))]
     public void MutationEndpointsRequireManagePermission(string methodName, Type verbAttribute)
     {
         var method = typeof(ElectionsController).GetMethod(methodName);

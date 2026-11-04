@@ -20,6 +20,9 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
     [Authorize(Policy = PermissionCodes.WorkforceRead)]
     public async Task<ActionResult<IReadOnlyList<TeamSummary>>> GetTeams(Guid electionId, CancellationToken token) => Ok(await operations.GetTeamsAsync(electionId, token));
 
+    [HttpGet("leader-dashboard")][Authorize(Policy=PermissionCodes.WorkforceRead)]
+    public async Task<ActionResult<TeamLeaderDashboardSummary>> GetLeaderDashboard(Guid electionId,CancellationToken token)=>Ok(await operations.GetTeamLeaderDashboardAsync(electionId,token));
+
     [HttpPost("teams")]
     [Authorize(Policy = PermissionCodes.WorkforceManage)]
     public async Task<ActionResult<TeamSummary>> CreateTeam(Guid electionId, CreateTeamRequest request, CancellationToken token)

@@ -38,6 +38,18 @@ public sealed class WorkforceOperationsService(
             .Select(x => new TeamSummary(x.Id, x.AreaId, x.LeaderUserId, x.Name, x.IsActive, x.CreatedAtUtc))
             .ToListAsync(token);
 
+    public async Task<TeamLeaderDashboardSummary> GetTeamLeaderDashboardAsync(Guid electionId,CancellationToken token)
+    {
+        var tenantId=tenantContext.TenantId;var today=DateOnly.FromDateTime(DateTime.UtcNow);var now=DateTimeOffset.UtcNow;
+        var teams=await teamsDb.Teams.Where(x=>x.TenantId==tenantId&&x.ElectionId==electionId&&x.IsActive).OrderBy(x=>x.Name).ToListAsync(token);var teamIds=teams.Select(x=>x.Id).ToArray();
+        var members=await teamsDb.FieldMembers.Where(x=>x.TenantId==tenantId&&teamIds.Contains(x.TeamId)&&x.IsActive).ToListAsync(token);
+        var work=await teamsDb.MemberWorkAssignments.Where(x=>x.TenantId==tenantId&&x.ElectionId==electionId&&teamIds.Contains(x.TeamId)).ToListAsync(token);
+        var terminalIds=await teamsDb.TaskStates.Where(x=>x.IsActive&&x.IsTerminal).Select(x=>x.Id).ToListAsync(token);
+        var attended=await teamsDb.FieldMemberAttendances.Where(x=>x.TenantId==tenantId&&teamIds.Contains(x.TeamId)&&x.AttendanceDate==today).Select(x=>x.MemberId).ToListAsync(token);
+        var alerts=teams.Select(team=>{var teamMembers=members.Where(x=>x.TeamId==team.Id).ToList();var teamWork=work.Where(x=>x.TeamId==team.Id).ToList();var pendingAttendance=teamMembers.Count(x=>!attended.Contains(x.Id));var overdue=teamWork.Count(x=>!terminalIds.Contains(x.StateId)&&x.DueAtUtc<now);var pendingVerification=teamWork.Count(x=>terminalIds.Contains(x.StateId)&&x.VerifiedAtUtc==null);var open=teamWork.Count(x=>!terminalIds.Contains(x.StateId));return new TeamLeaderAlert(team.Id,team.Name,team.LeaderUserId,teamMembers.Count,pendingAttendance,open,overdue,pendingVerification);}).ToList();
+        return new TeamLeaderDashboardSummary(today,alerts.Sum(x=>x.ActiveMembers),alerts.Sum(x=>x.AttendancePending),alerts.Sum(x=>x.OpenWork),alerts.Sum(x=>x.OverdueWork),alerts.Sum(x=>x.VerificationPending),alerts);
+    }
+
     public async Task<TeamSummary?> CreateTeamAsync(Guid electionId, CreateTeamCommand command, CancellationToken token)
     {
         if (!await ElectionExistsAsync(electionId, token) || !await geographyDb.Areas.AnyAsync(x => x.Id == command.AreaId && x.IsActive, token)) return null;
@@ -282,6 +294,8 @@ public sealed record WorkforceCenterSummary(Guid ElectionCenterId, string Code, 
 public sealed record TaskStateSummary(short Id, string Code, string Name, bool IsTerminal);
 public sealed record TaskPrioritySummary(short Id, string Code, string Name, short Rank);
 public sealed record TeamSummary(Guid TeamId, long AreaId, Guid? LeaderUserId, string Name, bool IsActive, DateTimeOffset CreatedAtUtc);
+public sealed record TeamLeaderAlert(Guid TeamId,string TeamName,Guid? LeaderUserId,int ActiveMembers,int AttendancePending,int OpenWork,int OverdueWork,int VerificationPending);
+public sealed record TeamLeaderDashboardSummary(DateOnly AttendanceDate,int ActiveMembers,int AttendancePending,int OpenWork,int OverdueWork,int VerificationPending,IReadOnlyList<TeamLeaderAlert> Teams);
 public sealed record TeamMemberSummary(Guid UserId, string DisplayName, string Username, string Responsibility, DateTimeOffset JoinedAtUtc, bool IsActive);
 public sealed record FieldMemberSummary(Guid MemberId,Guid TeamId,string FullName,string Phone,string MemberType,long? AreaId,string? Address,string? EmergencyContact,DateTimeOffset JoinedAtUtc,bool IsActive);
 public sealed record FieldAttendanceSummary(Guid AttendanceId,Guid MemberId,DateOnly AttendanceDate,string Status,string? Note,Guid RecordedByUserId,DateTimeOffset RecordedAtUtc);

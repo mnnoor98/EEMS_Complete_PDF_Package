@@ -2,7 +2,7 @@ import {inject, Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,FieldMemberSummary,FieldAttendanceSummary,MemberWorkSummary,
-  ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
+  ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamLeaderDashboardSummary, TeamMemberSummary, TeamSummary,
   AdministrationDashboard, AllocationSummary, AuditPage, BudgetLineSummary, BudgetSummary, CampaignEventSummary, EventWorkspace, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MeetingSummary, MovementSummary, NotificationFeed, OperationsDashboard, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VenueSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
 } from '../models/api.models';
 
@@ -61,6 +61,7 @@ export class EemsApiService {
   getNotifications(){return this.http.get<NotificationFeed>('/api/v1/oversight/notifications')}
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }
+  getTeamLeaderDashboard(id:string){return this.http.get<TeamLeaderDashboardSummary>(`/api/v1/elections/${id}/workforce/leader-dashboard`)}
   createTeam(id: string, body: {areaId: number; name: string}) { return this.http.post<TeamSummary>(`/api/v1/elections/${id}/workforce/teams`, body); }
   getMembers(id: string, teamId: string) { return this.http.get<TeamMemberSummary[]>(`/api/v1/elections/${id}/workforce/teams/${teamId}/members`); }
   addMember(id: string, teamId: string, body: {userId: string; responsibility: string}) { return this.http.post<TeamMemberSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/members`, body); }

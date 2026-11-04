@@ -7,6 +7,8 @@ export interface PositionReference extends ReferenceItem{electionTypeId:number}
 export interface ElectionLookups{electionTypes:ReferenceItem[];lifecycleStates:LifecycleReference[];positions:PositionReference[];areas:AreaReference[]}
 export interface CandidateSummary{candidateId:string;assignmentId:string;name:string;externalReference:string|null;positionId:number;areaId:number;nominationReference:string|null;isActive:boolean}
 export interface TeamSummary{teamId:string;areaId:number;leaderUserId:string|null;name:string;isActive:boolean;createdAtUtc:string}
+export interface TeamLeaderAlert{teamId:string;teamName:string;leaderUserId:string|null;activeMembers:number;attendancePending:number;openWork:number;overdueWork:number;verificationPending:number}
+export interface TeamLeaderDashboardSummary{attendanceDate:string;activeMembers:number;attendancePending:number;openWork:number;overdueWork:number;verificationPending:number;teams:TeamLeaderAlert[]}
 export interface TeamMemberSummary{userId:string;displayName:string;username:string;responsibility:string;joinedAtUtc:string;isActive:boolean}
 export interface FieldMemberSummary{memberId:string;teamId:string;fullName:string;phone:string;memberType:string;areaId:number|null;address:string|null;emergencyContact:string|null;joinedAtUtc:string;isActive:boolean}
 export interface FieldAttendanceSummary{attendanceId:string;memberId:string;attendanceDate:string;status:string;note:string|null;recordedByUserId:string;recordedAtUtc:string}

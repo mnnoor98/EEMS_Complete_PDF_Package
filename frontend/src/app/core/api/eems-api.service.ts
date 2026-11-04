@@ -1,7 +1,7 @@
 import {inject, Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {
-  AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,FieldMemberSummary,MemberWorkSummary,
+  AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,FieldMemberSummary,FieldAttendanceSummary,MemberWorkSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
   AdministrationDashboard, AllocationSummary, AuditPage, BudgetLineSummary, BudgetSummary, CampaignEventSummary, EventWorkspace, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MeetingSummary, MovementSummary, NotificationFeed, OperationsDashboard, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VenueSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
 } from '../models/api.models';
@@ -67,9 +67,14 @@ export class EemsApiService {
   assignTeamLeader(id:string,teamId:string,userId:string){return this.http.put<TeamSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/leader`,{userId})}
   getFieldMembers(id:string,teamId:string){return this.http.get<FieldMemberSummary[]>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-members`)}
   createFieldMember(id:string,teamId:string,body:object){return this.http.post<FieldMemberSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-members`,body)}
+  updateFieldMember(id:string,teamId:string,memberId:string,body:object){return this.http.put<FieldMemberSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-members/${memberId}`,body)}
+  deactivateFieldMember(id:string,teamId:string,memberId:string){return this.http.put<FieldMemberSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-members/${memberId}/deactivate`,{})}
+  getFieldAttendance(id:string,teamId:string,date:string){return this.http.get<FieldAttendanceSummary[]>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-attendance`,{params:{date}})}
+  recordFieldAttendance(id:string,teamId:string,body:object){return this.http.post<FieldAttendanceSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-attendance`,body)}
   getMemberWork(id:string,teamId:string){return this.http.get<MemberWorkSummary[]>(`/api/v1/elections/${id}/workforce/teams/${teamId}/member-work`)}
   assignMemberWork(id:string,teamId:string,body:object){return this.http.post<MemberWorkSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/member-work`,body)}
   moveMemberWork(id:string,teamId:string,work:MemberWorkSummary,stateId:number){return this.http.put<MemberWorkSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/member-work/${work.assignmentId}/state`,{stateId,expectedVersion:work.version})}
+  verifyMemberWork(id:string,teamId:string,work:MemberWorkSummary,note:string){return this.http.put<MemberWorkSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/member-work/${work.assignmentId}/verify`,{expectedVersion:work.version,note:note||null})}
   getTasks(id: string) { return this.http.get<TeamTaskSummary[]>(`/api/v1/elections/${id}/workforce/tasks`); }
   createTask(id: string, body: object) { return this.http.post<TeamTaskSummary>(`/api/v1/elections/${id}/workforce/tasks`, body); }
   moveTask(id: string, task: TeamTaskSummary, stateId: number) { return this.http.put<TeamTaskSummary>(`/api/v1/elections/${id}/workforce/tasks/${task.taskId}/state`, {stateId, expectedVersion: task.version}); }

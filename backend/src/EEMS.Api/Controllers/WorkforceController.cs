@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using EEMS.Api.Authorization;
 using EEMS.Api.Workforce;
 using Microsoft.AspNetCore.Authorization;
@@ -36,6 +37,18 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
     [HttpPost("teams/{teamId:guid}/field-members")][Authorize(Policy=PermissionCodes.WorkforceManage)]
     public async Task<ActionResult<FieldMemberSummary>> CreateFieldMember(Guid electionId,Guid teamId,CreateFieldMemberRequest request,CancellationToken token){var result=await operations.CreateFieldMemberAsync(electionId,teamId,new(request.FullName,request.Phone,request.MemberType,request.AreaId,request.Address,request.EmergencyContact),token);return result is null?BadRequest(new{error="invalid_or_duplicate_field_member"}):Ok(result);}
 
+    [HttpPut("teams/{teamId:guid}/field-members/{memberId:guid}")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<FieldMemberSummary>> UpdateFieldMember(Guid electionId,Guid teamId,Guid memberId,UpdateFieldMemberRequest request,CancellationToken token){var result=await operations.UpdateFieldMemberAsync(electionId,teamId,memberId,new(request.FullName,request.Phone,request.MemberType,request.AreaId,request.Address,request.EmergencyContact),token);return result is null?BadRequest(new{error="invalid_or_duplicate_field_member"}):Ok(result);}
+
+    [HttpPut("teams/{teamId:guid}/field-members/{memberId:guid}/deactivate")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<FieldMemberSummary>> DeactivateFieldMember(Guid electionId,Guid teamId,Guid memberId,CancellationToken token){var result=await operations.DeactivateFieldMemberAsync(electionId,teamId,memberId,token);return result is null?NotFound():Ok(result);}
+
+    [HttpGet("teams/{teamId:guid}/field-attendance")][Authorize(Policy=PermissionCodes.WorkforceRead)]
+    public async Task<ActionResult<IReadOnlyList<FieldAttendanceSummary>>> GetFieldAttendance(Guid electionId,Guid teamId,[FromQuery]DateOnly? date,CancellationToken token)=>Ok(await operations.GetFieldAttendanceAsync(electionId,teamId,date??DateOnly.FromDateTime(DateTime.UtcNow),token));
+
+    [HttpPost("teams/{teamId:guid}/field-attendance")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<FieldAttendanceSummary>> RecordFieldAttendance(Guid electionId,Guid teamId,RecordFieldAttendanceRequest request,CancellationToken token){if(!TryGetUserId(out var userId))return Unauthorized();var result=await operations.RecordFieldAttendanceAsync(electionId,teamId,new(request.MemberId,request.AttendanceDate,request.Status,request.Note),userId,token);return result is null?BadRequest(new{error="invalid_or_duplicate_field_attendance"}):Ok(result);}
+
     [HttpGet("teams/{teamId:guid}/member-work")][Authorize(Policy=PermissionCodes.WorkforceRead)]
     public async Task<ActionResult<IReadOnlyList<MemberWorkSummary>>> GetMemberWork(Guid electionId,Guid teamId,CancellationToken token)=>Ok(await operations.GetMemberWorkAsync(electionId,teamId,token));
 
@@ -44,6 +57,9 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
 
     [HttpPut("teams/{teamId:guid}/member-work/{assignmentId:guid}/state")][Authorize(Policy=PermissionCodes.WorkforceManage)]
     public async Task<ActionResult<MemberWorkSummary>> MoveMemberWork(Guid electionId,Guid teamId,Guid assignmentId,MoveTeamTaskRequest request,CancellationToken token){var result=await operations.MoveMemberWorkAsync(electionId,teamId,assignmentId,request.StateId,request.ExpectedVersion,token);return result is null?Conflict(new{error="invalid_state_or_version"}):Ok(result);}
+
+    [HttpPut("teams/{teamId:guid}/member-work/{assignmentId:guid}/verify")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<MemberWorkSummary>> VerifyMemberWork(Guid electionId,Guid teamId,Guid assignmentId,VerifyMemberWorkRequest request,CancellationToken token){if(!TryGetUserId(out var userId))return Unauthorized();var result=await operations.VerifyMemberWorkAsync(electionId,teamId,assignmentId,request.ExpectedVersion,userId,request.Note,token);return result is null?Conflict(new{error="work_must_be_terminal_unverified_and_current"}):Ok(result);}
 
     [HttpGet("teams/{teamId:guid}/members")]
     [Authorize(Policy = PermissionCodes.WorkforceRead)]
@@ -112,12 +128,17 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
         var result = await operations.AssignAgentAsync(electionId, new AssignAgentCommand(request.ElectionCenterId, request.UserId, request.StartsAtUtc, request.EndsAtUtc), token);
         return result is null ? BadRequest(new { error = "invalid_agent_reference" }) : Ok(result);
     }
+
+    private bool TryGetUserId(out Guid userId)=>Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier)??User.FindFirstValue("sub"),out userId);
 }
 
 public sealed record CreateTeamRequest(long AreaId, [Required, MaxLength(160)] string Name);
 public sealed record AssignTeamLeaderRequest(Guid UserId);
 public sealed record CreateFieldMemberRequest([Required,MaxLength(200)]string FullName,[Required,MaxLength(30)]string Phone,[Required,MaxLength(80)]string MemberType,long? AreaId,[MaxLength(500)]string? Address,[MaxLength(120)]string? EmergencyContact);
+public sealed record UpdateFieldMemberRequest([Required,MaxLength(200)]string FullName,[Required,MaxLength(30)]string Phone,[Required,MaxLength(80)]string MemberType,long? AreaId,[MaxLength(500)]string? Address,[MaxLength(120)]string? EmergencyContact);
+public sealed record RecordFieldAttendanceRequest(Guid MemberId,DateOnly AttendanceDate,[Required,MaxLength(20)]string Status,[MaxLength(300)]string? Note);
 public sealed record AssignMemberWorkRequest(Guid MemberId,short StateId,short PriorityId,[Required,MaxLength(200)]string Title,[MaxLength(1000)]string? Instructions,DateTimeOffset? DueAtUtc);
+public sealed record VerifyMemberWorkRequest(int ExpectedVersion,[MaxLength(500)]string? Note);
 public sealed record AddTeamMemberRequest(Guid UserId, [Required, MaxLength(120)] string Responsibility);
 public sealed record CreateTeamTaskRequest(Guid? TeamId, Guid? AssigneeUserId, short StateId, short PriorityId, [Required, MaxLength(200)] string Title, DateTimeOffset? DueAtUtc);
 public sealed record MoveTeamTaskRequest(short StateId, int ExpectedVersion);

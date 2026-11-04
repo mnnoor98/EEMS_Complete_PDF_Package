@@ -109,6 +109,58 @@ namespace EEMS.Modules.Teams.Infrastructure.Migrations
                     b.ToTable("field_members", "team");
                 });
 
+            modelBuilder.Entity("EEMS.Modules.Teams.Domain.FieldMemberAttendance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_id");
+
+                    b.Property<DateOnly>("AttendanceDate")
+                        .HasColumnType("date")
+                        .HasColumnName("attendance_date");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTimeOffset>("RecordedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid>("RecordedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recorded_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("team_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("TenantId", "TeamId", "MemberId", "AttendanceDate")
+                        .IsUnique();
+
+                    b.ToTable("field_member_attendance", "team");
+                });
+
             modelBuilder.Entity("EEMS.Modules.Teams.Domain.MemberWorkAssignment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -158,6 +210,19 @@ namespace EEMS.Modules.Teams.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("title");
+
+                    b.Property<string>("VerificationNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("verification_note");
+
+                    b.Property<DateTimeOffset?>("VerifiedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.Property<Guid?>("VerifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("verified_by_user_id");
 
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
@@ -425,6 +490,15 @@ namespace EEMS.Modules.Teams.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("trainings", "team");
+                });
+
+            modelBuilder.Entity("EEMS.Modules.Teams.Domain.FieldMemberAttendance", b =>
+                {
+                    b.HasOne("EEMS.Modules.Teams.Domain.FieldMember", null)
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EEMS.Modules.Teams.Domain.MemberWorkAssignment", b =>

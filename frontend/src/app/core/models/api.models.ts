@@ -9,7 +9,8 @@ export interface CandidateSummary{candidateId:string;assignmentId:string;name:st
 export interface TeamSummary{teamId:string;areaId:number;leaderUserId:string|null;name:string;isActive:boolean;createdAtUtc:string}
 export interface TeamMemberSummary{userId:string;displayName:string;username:string;responsibility:string;joinedAtUtc:string;isActive:boolean}
 export interface FieldMemberSummary{memberId:string;teamId:string;fullName:string;phone:string;memberType:string;areaId:number|null;address:string|null;emergencyContact:string|null;joinedAtUtc:string;isActive:boolean}
-export interface MemberWorkSummary{assignmentId:string;memberId:string;stateId:number;priorityId:number;title:string;instructions:string|null;dueAtUtc:string|null;createdAtUtc:string;version:number}
+export interface FieldAttendanceSummary{attendanceId:string;memberId:string;attendanceDate:string;status:string;note:string|null;recordedByUserId:string;recordedAtUtc:string}
+export interface MemberWorkSummary{assignmentId:string;memberId:string;stateId:number;priorityId:number;title:string;instructions:string|null;dueAtUtc:string|null;createdAtUtc:string;verifiedByUserId:string|null;verifiedAtUtc:string|null;verificationNote:string|null;version:number}
 export interface TaskStateSummary{id:number;code:string;name:string;isTerminal:boolean} export interface TaskPrioritySummary{id:number;code:string;name:string;rank:number}
 export interface WorkforceAreaSummary{id:number;code:string;nameBn:string;nameEn:string|null} export interface WorkforceUserSummary{userId:string;displayName:string;username:string} export interface WorkforceCenterSummary{electionCenterId:string;code:string;name:string}
 export interface WorkforceLookups{taskStates:TaskStateSummary[];taskPriorities:TaskPrioritySummary[];areas:WorkforceAreaSummary[];users:WorkforceUserSummary[];centers:WorkforceCenterSummary[]}

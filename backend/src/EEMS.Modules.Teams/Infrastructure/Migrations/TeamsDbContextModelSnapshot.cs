@@ -46,6 +46,137 @@ namespace EEMS.Modules.Teams.Infrastructure.Migrations
                     b.ToTable("attendance", "team");
                 });
 
+            modelBuilder.Entity("EEMS.Modules.Teams.Domain.FieldMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<long?>("AreaId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("area_id");
+
+                    b.Property<string>("EmergencyContact")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("emergency_contact");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTimeOffset>("JoinedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<string>("MemberType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("member_type");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("team_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "TeamId", "Phone")
+                        .IsUnique();
+
+                    b.ToTable("field_members", "team");
+                });
+
+            modelBuilder.Entity("EEMS.Modules.Teams.Domain.MemberWorkAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DueAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at");
+
+                    b.Property<Guid>("ElectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("election_id");
+
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("instructions");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<short>("PriorityId")
+                        .HasColumnType("smallint")
+                        .HasColumnName("task_priority_id");
+
+                    b.Property<short>("StateId")
+                        .HasColumnType("smallint")
+                        .HasColumnName("task_state_id");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("team_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("PriorityId");
+
+                    b.HasIndex("StateId");
+
+                    b.HasIndex("TenantId", "TeamId", "MemberId", "StateId");
+
+                    b.ToTable("member_work_assignments", "team");
+                });
+
             modelBuilder.Entity("EEMS.Modules.Teams.Domain.TaskPriority", b =>
                 {
                     b.Property<short>("Id")
@@ -139,6 +270,10 @@ namespace EEMS.Modules.Teams.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<Guid?>("LeaderUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("leader_user_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -290,6 +425,27 @@ namespace EEMS.Modules.Teams.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("trainings", "team");
+                });
+
+            modelBuilder.Entity("EEMS.Modules.Teams.Domain.MemberWorkAssignment", b =>
+                {
+                    b.HasOne("EEMS.Modules.Teams.Domain.FieldMember", null)
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EEMS.Modules.Teams.Domain.TaskPriority", null)
+                        .WithMany()
+                        .HasForeignKey("PriorityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EEMS.Modules.Teams.Domain.TaskState", null)
+                        .WithMany()
+                        .HasForeignKey("StateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EEMS.Modules.Teams.Domain.TeamTask", b =>

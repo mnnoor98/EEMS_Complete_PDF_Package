@@ -35,7 +35,7 @@ public sealed class WorkforceOperationsService(
     public async Task<IReadOnlyList<TeamSummary>> GetTeamsAsync(Guid electionId, CancellationToken token) =>
         await teamsDb.Teams.Where(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId)
             .OrderBy(x => x.Name)
-            .Select(x => new TeamSummary(x.Id, x.AreaId, x.Name, x.IsActive, x.CreatedAtUtc))
+            .Select(x => new TeamSummary(x.Id, x.AreaId, x.LeaderUserId, x.Name, x.IsActive, x.CreatedAtUtc))
             .ToListAsync(token);
 
     public async Task<TeamSummary?> CreateTeamAsync(Guid electionId, CreateTeamCommand command, CancellationToken token)
@@ -44,7 +44,48 @@ public sealed class WorkforceOperationsService(
         var team = Team.Create(tenantContext.TenantId, electionId, command.AreaId, command.Name);
         teamsDb.Teams.Add(team);
         await teamsDb.SaveChangesAsync(token);
-        return new TeamSummary(team.Id, team.AreaId, team.Name, team.IsActive, team.CreatedAtUtc);
+        return new TeamSummary(team.Id, team.AreaId, team.LeaderUserId, team.Name, team.IsActive, team.CreatedAtUtc);
+    }
+
+    public async Task<TeamSummary?> AssignTeamLeaderAsync(Guid electionId, Guid teamId, Guid userId, CancellationToken token)
+    {
+        var team=await teamsDb.Teams.SingleOrDefaultAsync(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&x.Id==teamId&&x.IsActive,token);
+        if(team is null||await GetActiveTenantUserAsync(userId,token) is null)return null;
+        team.AssignLeader(userId);await teamsDb.SaveChangesAsync(token);
+        return new TeamSummary(team.Id,team.AreaId,team.LeaderUserId,team.Name,team.IsActive,team.CreatedAtUtc);
+    }
+
+    public async Task<IReadOnlyList<FieldMemberSummary>> GetFieldMembersAsync(Guid electionId,Guid teamId,CancellationToken token)
+    {
+        if(!await teamsDb.Teams.AnyAsync(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&x.Id==teamId,token))return [];
+        return await teamsDb.FieldMembers.Where(x=>x.TenantId==tenantContext.TenantId&&x.TeamId==teamId).OrderBy(x=>x.FullName)
+            .Select(x=>new FieldMemberSummary(x.Id,x.TeamId,x.FullName,x.Phone,x.MemberType,x.AreaId,x.Address,x.EmergencyContact,x.JoinedAtUtc,x.IsActive)).ToListAsync(token);
+    }
+
+    public async Task<FieldMemberSummary?> CreateFieldMemberAsync(Guid electionId,Guid teamId,CreateFieldMemberCommand command,CancellationToken token)
+    {
+        if(!await teamsDb.Teams.AnyAsync(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&x.Id==teamId&&x.IsActive,token)||command.AreaId is not null&&!await geographyDb.Areas.AnyAsync(x=>x.Id==command.AreaId&&x.IsActive,token))return null;
+        if(await teamsDb.FieldMembers.AnyAsync(x=>x.TenantId==tenantContext.TenantId&&x.TeamId==teamId&&x.Phone==command.Phone.Trim(),token))return null;
+        var member=FieldMember.Create(tenantContext.TenantId,teamId,command.FullName,command.Phone,command.MemberType,command.AreaId,command.Address,command.EmergencyContact);teamsDb.FieldMembers.Add(member);await teamsDb.SaveChangesAsync(token);
+        return new FieldMemberSummary(member.Id,member.TeamId,member.FullName,member.Phone,member.MemberType,member.AreaId,member.Address,member.EmergencyContact,member.JoinedAtUtc,member.IsActive);
+    }
+
+    public async Task<IReadOnlyList<MemberWorkSummary>> GetMemberWorkAsync(Guid electionId,Guid teamId,CancellationToken token)=>
+        await teamsDb.MemberWorkAssignments.Where(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&x.TeamId==teamId).OrderBy(x=>x.DueAtUtc)
+            .Select(x=>new MemberWorkSummary(x.Id,x.MemberId,x.StateId,x.PriorityId,x.Title,x.Instructions,x.DueAtUtc,x.CreatedAtUtc,x.Version)).ToListAsync(token);
+
+    public async Task<MemberWorkSummary?> AssignMemberWorkAsync(Guid electionId,Guid teamId,AssignMemberWorkCommand command,CancellationToken token)
+    {
+        if(!await teamsDb.FieldMembers.AnyAsync(x=>x.TenantId==tenantContext.TenantId&&x.TeamId==teamId&&x.Id==command.MemberId&&x.IsActive,token)||!await teamsDb.TaskStates.AnyAsync(x=>x.Id==command.StateId&&x.IsActive,token)||!await teamsDb.TaskPriorities.AnyAsync(x=>x.Id==command.PriorityId&&x.IsActive,token))return null;
+        var work=MemberWorkAssignment.Create(tenantContext.TenantId,electionId,teamId,command.MemberId,command.StateId,command.PriorityId,command.Title,command.Instructions,command.DueAtUtc);teamsDb.MemberWorkAssignments.Add(work);await teamsDb.SaveChangesAsync(token);
+        return new MemberWorkSummary(work.Id,work.MemberId,work.StateId,work.PriorityId,work.Title,work.Instructions,work.DueAtUtc,work.CreatedAtUtc,work.Version);
+    }
+
+    public async Task<MemberWorkSummary?> MoveMemberWorkAsync(Guid electionId,Guid teamId,Guid assignmentId,short stateId,int expectedVersion,CancellationToken token)
+    {
+        var work=await teamsDb.MemberWorkAssignments.SingleOrDefaultAsync(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&x.TeamId==teamId&&x.Id==assignmentId,token);
+        if(work is null||work.Version!=expectedVersion||!await teamsDb.TaskStates.AnyAsync(x=>x.Id==stateId&&x.IsActive,token))return null;
+        work.MoveTo(stateId);await teamsDb.SaveChangesAsync(token);return new MemberWorkSummary(work.Id,work.MemberId,work.StateId,work.PriorityId,work.Title,work.Instructions,work.DueAtUtc,work.CreatedAtUtc,work.Version);
     }
 
     public async Task<IReadOnlyList<TeamMemberSummary>> GetTeamMembersAsync(Guid electionId, Guid teamId, CancellationToken token)
@@ -195,14 +236,18 @@ public sealed record WorkforceUserSummary(Guid UserId, string DisplayName, strin
 public sealed record WorkforceCenterSummary(Guid ElectionCenterId, string Code, string Name);
 public sealed record TaskStateSummary(short Id, string Code, string Name, bool IsTerminal);
 public sealed record TaskPrioritySummary(short Id, string Code, string Name, short Rank);
-public sealed record TeamSummary(Guid TeamId, long AreaId, string Name, bool IsActive, DateTimeOffset CreatedAtUtc);
+public sealed record TeamSummary(Guid TeamId, long AreaId, Guid? LeaderUserId, string Name, bool IsActive, DateTimeOffset CreatedAtUtc);
 public sealed record TeamMemberSummary(Guid UserId, string DisplayName, string Username, string Responsibility, DateTimeOffset JoinedAtUtc, bool IsActive);
+public sealed record FieldMemberSummary(Guid MemberId,Guid TeamId,string FullName,string Phone,string MemberType,long? AreaId,string? Address,string? EmergencyContact,DateTimeOffset JoinedAtUtc,bool IsActive);
+public sealed record MemberWorkSummary(Guid AssignmentId,Guid MemberId,short StateId,short PriorityId,string Title,string? Instructions,DateTimeOffset? DueAtUtc,DateTimeOffset CreatedAtUtc,int Version);
 public sealed record TeamTaskSummary(Guid TaskId, Guid? TeamId, Guid? AssigneeUserId, short StateId, short PriorityId, string Title, DateTimeOffset? DueAtUtc, DateTimeOffset CreatedAtUtc, int Version);
 public sealed record TrainingSummary(Guid TrainingId, string Title, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc);
 public sealed record AttendanceSummary(Guid UserId, string DisplayName, string Username, DateTimeOffset RecordedAtUtc);
 public sealed record AgentAssignmentSummary(Guid AssignmentId, Guid ElectionCenterId, Guid UserId, string DisplayName, string Username, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc, bool IsActive);
 public sealed record CreateTeamCommand(long AreaId, string Name);
 public sealed record AddTeamMemberCommand(Guid UserId, string Responsibility);
+public sealed record CreateFieldMemberCommand(string FullName,string Phone,string MemberType,long? AreaId,string? Address,string? EmergencyContact);
+public sealed record AssignMemberWorkCommand(Guid MemberId,short StateId,short PriorityId,string Title,string? Instructions,DateTimeOffset? DueAtUtc);
 public sealed record CreateTaskCommand(Guid? TeamId, Guid? AssigneeUserId, short StateId, short PriorityId, string Title, DateTimeOffset? DueAtUtc);
 public sealed record CreateTrainingCommand(string Title, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc);
 public sealed record AssignAgentCommand(Guid ElectionCenterId, Guid UserId, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc);

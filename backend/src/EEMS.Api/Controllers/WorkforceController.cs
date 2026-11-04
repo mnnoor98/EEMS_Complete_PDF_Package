@@ -27,6 +27,24 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
         return result is null ? BadRequest(new { error = "invalid_team_reference" }) : Ok(result);
     }
 
+    [HttpPut("teams/{teamId:guid}/leader")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<TeamSummary>> AssignLeader(Guid electionId,Guid teamId,AssignTeamLeaderRequest request,CancellationToken token){var result=await operations.AssignTeamLeaderAsync(electionId,teamId,request.UserId,token);return result is null?BadRequest(new{error="invalid_team_leader"}):Ok(result);}
+
+    [HttpGet("teams/{teamId:guid}/field-members")][Authorize(Policy=PermissionCodes.WorkforceRead)]
+    public async Task<ActionResult<IReadOnlyList<FieldMemberSummary>>> GetFieldMembers(Guid electionId,Guid teamId,CancellationToken token)=>Ok(await operations.GetFieldMembersAsync(electionId,teamId,token));
+
+    [HttpPost("teams/{teamId:guid}/field-members")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<FieldMemberSummary>> CreateFieldMember(Guid electionId,Guid teamId,CreateFieldMemberRequest request,CancellationToken token){var result=await operations.CreateFieldMemberAsync(electionId,teamId,new(request.FullName,request.Phone,request.MemberType,request.AreaId,request.Address,request.EmergencyContact),token);return result is null?BadRequest(new{error="invalid_or_duplicate_field_member"}):Ok(result);}
+
+    [HttpGet("teams/{teamId:guid}/member-work")][Authorize(Policy=PermissionCodes.WorkforceRead)]
+    public async Task<ActionResult<IReadOnlyList<MemberWorkSummary>>> GetMemberWork(Guid electionId,Guid teamId,CancellationToken token)=>Ok(await operations.GetMemberWorkAsync(electionId,teamId,token));
+
+    [HttpPost("teams/{teamId:guid}/member-work")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<MemberWorkSummary>> AssignMemberWork(Guid electionId,Guid teamId,AssignMemberWorkRequest request,CancellationToken token){var result=await operations.AssignMemberWorkAsync(electionId,teamId,new(request.MemberId,request.StateId,request.PriorityId,request.Title,request.Instructions,request.DueAtUtc),token);return result is null?BadRequest(new{error="invalid_member_work"}):Ok(result);}
+
+    [HttpPut("teams/{teamId:guid}/member-work/{assignmentId:guid}/state")][Authorize(Policy=PermissionCodes.WorkforceManage)]
+    public async Task<ActionResult<MemberWorkSummary>> MoveMemberWork(Guid electionId,Guid teamId,Guid assignmentId,MoveTeamTaskRequest request,CancellationToken token){var result=await operations.MoveMemberWorkAsync(electionId,teamId,assignmentId,request.StateId,request.ExpectedVersion,token);return result is null?Conflict(new{error="invalid_state_or_version"}):Ok(result);}
+
     [HttpGet("teams/{teamId:guid}/members")]
     [Authorize(Policy = PermissionCodes.WorkforceRead)]
     public async Task<ActionResult<IReadOnlyList<TeamMemberSummary>>> GetMembers(Guid electionId, Guid teamId, CancellationToken token) => Ok(await operations.GetTeamMembersAsync(electionId, teamId, token));
@@ -97,6 +115,9 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
 }
 
 public sealed record CreateTeamRequest(long AreaId, [Required, MaxLength(160)] string Name);
+public sealed record AssignTeamLeaderRequest(Guid UserId);
+public sealed record CreateFieldMemberRequest([Required,MaxLength(200)]string FullName,[Required,MaxLength(30)]string Phone,[Required,MaxLength(80)]string MemberType,long? AreaId,[MaxLength(500)]string? Address,[MaxLength(120)]string? EmergencyContact);
+public sealed record AssignMemberWorkRequest(Guid MemberId,short StateId,short PriorityId,[Required,MaxLength(200)]string Title,[MaxLength(1000)]string? Instructions,DateTimeOffset? DueAtUtc);
 public sealed record AddTeamMemberRequest(Guid UserId, [Required, MaxLength(120)] string Responsibility);
 public sealed record CreateTeamTaskRequest(Guid? TeamId, Guid? AssigneeUserId, short StateId, short PriorityId, [Required, MaxLength(200)] string Title, DateTimeOffset? DueAtUtc);
 public sealed record MoveTeamTaskRequest(short StateId, int ExpectedVersion);

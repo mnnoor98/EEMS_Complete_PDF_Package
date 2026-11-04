@@ -1,4 +1,5 @@
 using EEMS.Modules.Elections.Infrastructure;
+using EEMS.Api.Time;
 using EEMS.Modules.Geography.Infrastructure;
 using EEMS.Modules.Identity.Infrastructure;
 using EEMS.Modules.Polling.Domain;
@@ -16,7 +17,8 @@ public sealed class WorkforceOperationsService(
     ElectionsDbContext electionsDb,
     GeographyDbContext geographyDb,
     IdentityDbContext identityDb,
-    ITenantContext tenantContext)
+    ITenantContext tenantContext,
+    IBusinessClock clock)
 {
     public async Task<WorkforceLookups> GetLookupsAsync(Guid electionId, CancellationToken token) => new(
         await teamsDb.TaskStates.Where(x => x.IsActive).OrderBy(x => x.Id)
@@ -40,7 +42,7 @@ public sealed class WorkforceOperationsService(
 
     public async Task<TeamLeaderDashboardSummary> GetTeamLeaderDashboardAsync(Guid electionId,CancellationToken token)
     {
-        var tenantId=tenantContext.TenantId;var today=DateOnly.FromDateTime(DateTime.UtcNow);var now=DateTimeOffset.UtcNow;
+        var tenantId=tenantContext.TenantId;var today=clock.Today;var now=clock.UtcNow;
         var teams=await teamsDb.Teams.Where(x=>x.TenantId==tenantId&&x.ElectionId==electionId&&x.IsActive).OrderBy(x=>x.Name).ToListAsync(token);var teamIds=teams.Select(x=>x.Id).ToArray();
         var members=await teamsDb.FieldMembers.Where(x=>x.TenantId==tenantId&&teamIds.Contains(x.TeamId)&&x.IsActive).ToListAsync(token);
         var work=await teamsDb.MemberWorkAssignments.Where(x=>x.TenantId==tenantId&&x.ElectionId==electionId&&teamIds.Contains(x.TeamId)).ToListAsync(token);

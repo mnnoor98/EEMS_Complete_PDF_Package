@@ -34,6 +34,7 @@ using EEMS.Api.Inventory;
 using EEMS.Api.Finance;
 using EEMS.Api.Events;
 using EEMS.Api.Dashboard;
+using EEMS.Api.Audit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,7 @@ builder.Services.AddScoped<InventoryOperationsService>();
 builder.Services.AddScoped<FinanceOperationsService>();
 builder.Services.AddScoped<EventOperationsService>();
 builder.Services.AddScoped<OperationsDashboardService>();
+builder.Services.AddScoped<AuditNotificationService>();
 builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddApiOpenApi();
 builder.Services.AddInitialBootstrap(builder.Configuration);
@@ -85,6 +87,7 @@ await app.Services.InitializeReferenceDataAsync();
 await app.Services.InitializePermissionAuthorizationAsync();
 
 app.UseExceptionHandler();
+if (!app.Environment.IsDevelopment()) app.UseHsts();
 app.UseApiSecurityHeaders();
 if (app.Environment.IsDevelopment())
 {
@@ -99,7 +102,8 @@ app.UseMiddleware<PasswordChangeMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<TenantTransactionMiddleware>();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = _ => false });
 
 app.Run();
 

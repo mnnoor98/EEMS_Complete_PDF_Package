@@ -13,7 +13,7 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
 {
     [HttpGet("lookups")]
     [Authorize(Policy = PermissionCodes.WorkforceRead)]
-    public async Task<ActionResult<WorkforceLookups>> GetLookups(Guid electionId, CancellationToken token) => Ok(await operations.GetLookupsAsync(token));
+    public async Task<ActionResult<WorkforceLookups>> GetLookups(Guid electionId, CancellationToken token) => Ok(await operations.GetLookupsAsync(electionId, token));
 
     [HttpGet("teams")]
     [Authorize(Policy = PermissionCodes.WorkforceRead)]

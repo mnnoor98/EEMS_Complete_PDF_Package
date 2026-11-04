@@ -9,9 +9,11 @@ export interface CandidateSummary{candidateId:string;assignmentId:string;name:st
 export interface TeamSummary{teamId:string;areaId:number;name:string;isActive:boolean;createdAtUtc:string}
 export interface TeamMemberSummary{userId:string;displayName:string;username:string;responsibility:string;joinedAtUtc:string;isActive:boolean}
 export interface TaskStateSummary{id:number;code:string;name:string;isTerminal:boolean} export interface TaskPrioritySummary{id:number;code:string;name:string;rank:number}
-export interface WorkforceLookups{taskStates:TaskStateSummary[];taskPriorities:TaskPrioritySummary[]}
+export interface WorkforceAreaSummary{id:number;code:string;nameBn:string;nameEn:string|null} export interface WorkforceUserSummary{userId:string;displayName:string;username:string} export interface WorkforceCenterSummary{electionCenterId:string;code:string;name:string}
+export interface WorkforceLookups{taskStates:TaskStateSummary[];taskPriorities:TaskPrioritySummary[];areas:WorkforceAreaSummary[];users:WorkforceUserSummary[];centers:WorkforceCenterSummary[]}
 export interface TeamTaskSummary{taskId:string;teamId:string|null;assigneeUserId:string|null;stateId:number;priorityId:number;title:string;dueAtUtc:string|null;createdAtUtc:string;version:number}
 export interface TrainingSummary{trainingId:string;title:string;startsAtUtc:string;endsAtUtc:string}
+export interface AttendanceSummary{userId:string;displayName:string;username:string;recordedAtUtc:string}
 export interface AgentAssignmentSummary{assignmentId:string;electionCenterId:string;userId:string;displayName:string;username:string;startsAtUtc:string;endsAtUtc:string;isActive:boolean}
 export interface UserSummary{userId:string;username:string;displayName:string;email:string|null;isActive:boolean;roleCodes:string[]}
 export interface PagedResult<T>{items:T[];totalCount:number;page:number;pageSize:number}

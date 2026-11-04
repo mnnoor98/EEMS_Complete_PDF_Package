@@ -18,11 +18,19 @@ public sealed class WorkforceOperationsService(
     IdentityDbContext identityDb,
     ITenantContext tenantContext)
 {
-    public async Task<WorkforceLookups> GetLookupsAsync(CancellationToken token) => new(
+    public async Task<WorkforceLookups> GetLookupsAsync(Guid electionId, CancellationToken token) => new(
         await teamsDb.TaskStates.Where(x => x.IsActive).OrderBy(x => x.Id)
             .Select(x => new TaskStateSummary(x.Id, x.Code, x.Name, x.IsTerminal)).ToListAsync(token),
         await teamsDb.TaskPriorities.Where(x => x.IsActive).OrderBy(x => x.Rank)
-            .Select(x => new TaskPrioritySummary(x.Id, x.Code, x.Name, x.Rank)).ToListAsync(token));
+            .Select(x => new TaskPrioritySummary(x.Id, x.Code, x.Name, x.Rank)).ToListAsync(token),
+        await geographyDb.Areas.Where(x => x.IsActive).OrderBy(x => x.NameBn)
+            .Select(x => new WorkforceAreaSummary(x.Id, x.Code, x.NameBn, x.NameEn)).ToListAsync(token),
+        await (from user in identityDb.Users join membership in identityDb.TenantUsers on user.Id equals membership.UserId
+               where user.IsActive && membership.IsActive && membership.TenantId == tenantContext.TenantId
+               orderby user.DisplayName select new WorkforceUserSummary(user.Id, user.DisplayName, user.ExternalSubject)).ToListAsync(token),
+        await (from link in pollingDb.ElectionCenters join center in pollingDb.Centers on link.CenterId equals center.Id
+               where link.TenantId == tenantContext.TenantId && link.ElectionId == electionId
+               orderby center.Name select new WorkforceCenterSummary(link.Id, center.Code, center.Name)).ToListAsync(token));
 
     public async Task<IReadOnlyList<TeamSummary>> GetTeamsAsync(Guid electionId, CancellationToken token) =>
         await teamsDb.Teams.Where(x => x.TenantId == tenantContext.TenantId && x.ElectionId == electionId)
@@ -181,7 +189,10 @@ public sealed class WorkforceOperationsService(
         new(task.Id, task.TeamId, task.AssigneeUserId, task.StateId, task.PriorityId, task.Title, task.DueAtUtc, task.CreatedAtUtc, task.Version);
 }
 
-public sealed record WorkforceLookups(IReadOnlyList<TaskStateSummary> TaskStates, IReadOnlyList<TaskPrioritySummary> TaskPriorities);
+public sealed record WorkforceLookups(IReadOnlyList<TaskStateSummary> TaskStates, IReadOnlyList<TaskPrioritySummary> TaskPriorities, IReadOnlyList<WorkforceAreaSummary> Areas, IReadOnlyList<WorkforceUserSummary> Users, IReadOnlyList<WorkforceCenterSummary> Centers);
+public sealed record WorkforceAreaSummary(long Id, string Code, string NameBn, string? NameEn);
+public sealed record WorkforceUserSummary(Guid UserId, string DisplayName, string Username);
+public sealed record WorkforceCenterSummary(Guid ElectionCenterId, string Code, string Name);
 public sealed record TaskStateSummary(short Id, string Code, string Name, bool IsTerminal);
 public sealed record TaskPrioritySummary(short Id, string Code, string Name, short Rank);
 public sealed record TeamSummary(Guid TeamId, long AreaId, string Name, bool IsActive, DateTimeOffset CreatedAtUtc);

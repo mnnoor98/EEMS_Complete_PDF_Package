@@ -1,7 +1,7 @@
 import {inject, Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {
-  AgentAssignmentSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
+  AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
   TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WorkforceLookups
 } from '../models/api.models';
@@ -28,7 +28,10 @@ export class EemsApiService {
   moveTask(id: string, task: TeamTaskSummary, stateId: number) { return this.http.put<TeamTaskSummary>(`/api/v1/elections/${id}/workforce/tasks/${task.taskId}/state`, {stateId, expectedVersion: task.version}); }
   getTrainings(id: string) { return this.http.get<TrainingSummary[]>(`/api/v1/elections/${id}/workforce/trainings`); }
   createTraining(id: string, body: object) { return this.http.post<TrainingSummary>(`/api/v1/elections/${id}/workforce/trainings`, body); }
+  getAttendance(id: string, trainingId: string) { return this.http.get<AttendanceSummary[]>(`/api/v1/elections/${id}/workforce/trainings/${trainingId}/attendance`); }
+  recordAttendance(id: string, trainingId: string, userId: string) { return this.http.post<AttendanceSummary>(`/api/v1/elections/${id}/workforce/trainings/${trainingId}/attendance`, {userId, recordedAtUtc: null}); }
   getAgents(id: string) { return this.http.get<AgentAssignmentSummary[]>(`/api/v1/elections/${id}/workforce/agents`); }
+  assignAgent(id: string, body: {electionCenterId: string; userId: string; startsAtUtc: string; endsAtUtc: string}) { return this.http.post<AgentAssignmentSummary>(`/api/v1/elections/${id}/workforce/agents`, body); }
   getPollingCenters(id: string, search = '', verified = '') { const params: {[key: string]: string | number} = {page: 1, pageSize: 50}; if (search) params['search'] = search; if (verified) params['verified'] = verified; return this.http.get<PagedResult<CenterDirectoryItem>>(`/api/v1/elections/${id}/polling-centers`, {params}); }
   getPollingCenter(id: string, centerId: string) { return this.http.get<CenterDetail>(`/api/v1/elections/${id}/polling-centers/${centerId}`); }
   getPollingLookups(id: string) { return this.http.get<PollingLookups>(`/api/v1/elections/${id}/polling-centers/lookups`); }

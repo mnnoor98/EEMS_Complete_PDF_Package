@@ -18,6 +18,9 @@ password.txt
 **/.angular/
 **/.npm-cache/
 **/coverage/
+**/test-results/
+**/playwright-report/
+**/blob-report/
 npm-debug.log*
 
 # IDE and operating-system files

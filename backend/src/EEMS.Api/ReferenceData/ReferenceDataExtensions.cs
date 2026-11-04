@@ -14,6 +14,8 @@ using EEMS.Modules.Reporting.Domain;
 using EEMS.Modules.Reporting.Infrastructure;
 using EEMS.Modules.Inventory.Domain;
 using EEMS.Modules.Inventory.Infrastructure;
+using EEMS.Modules.Finance.Domain;
+using EEMS.Modules.Finance.Infrastructure;
 
 namespace EEMS.Api.ReferenceData;
 
@@ -110,10 +112,16 @@ public static class ReferenceDataExtensions
             if (!await inventory.AllocationStates.AnyAsync(item => item.Id == definition.Id, token))
                 inventory.AllocationStates.Add(AllocationState.Create(definition.Id, definition.Code, definition.Name, definition.IsTerminal));
         await inventory.SaveChangesAsync(token);
+
+        var finance = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+        foreach (var definition in options.ExpenseStates)
+            if (!await finance.ExpenseStates.AnyAsync(item => item.Id == definition.Id, token))
+                finance.ExpenseStates.Add(ExpenseState.Create(definition.Id, definition.Code, definition.Name, definition.IsApproved, definition.IsTerminal));
+        await finance.SaveChangesAsync(token);
     }
 
     private static bool IsValid(ReferenceDataOptions options) =>
-        options.ElectionTypes.Length > 0 && options.LifecycleStates.Length > 0 && options.TaskStates.Length > 0 && options.TaskPriorities.Length > 0 && options.ReadinessStates.Length > 0 && options.SubmissionStates.Length > 0 && options.ExportStates.Length > 0 && options.MovementTypes.Length > 0 && options.AllocationStates.Length > 0 &&
+        options.ElectionTypes.Length > 0 && options.LifecycleStates.Length > 0 && options.TaskStates.Length > 0 && options.TaskPriorities.Length > 0 && options.ReadinessStates.Length > 0 && options.SubmissionStates.Length > 0 && options.ExportStates.Length > 0 && options.MovementTypes.Length > 0 && options.AllocationStates.Length > 0 && options.ExpenseStates.Length > 0 &&
         options.Positions.Length > 0 && options.AreaTypes.Length > 0 && options.Areas.Length > 0 &&
         options.ElectionTypes.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.LifecycleStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
@@ -122,6 +130,7 @@ public static class ReferenceDataExtensions
         options.ReadinessStates.All(item => item.Id > 0 && item.Rank > 0 && HasText(item.Code, item.Name)) &&
         options.SubmissionStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) && options.ExportStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.MovementTypes.All(item => item.Id > 0 && (item.RequiresSource || item.RequiresDestination) && HasText(item.Code, item.Name)) && options.AllocationStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
+        options.ExpenseStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.Positions.All(item => item.Id > 0 && item.ElectionTypeId > 0 && HasText(item.Code, item.Name)) &&
         options.AreaTypes.All(item => item.Id > 0 && item.Level > 0 && HasText(item.Code, item.Name)) &&
         options.Areas.All(item => item.Id > 0 && item.AreaTypeId > 0 && HasText(item.Code, item.NameBn));

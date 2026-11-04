@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
-  AdministrationDashboard, AllocationSummary, ExportSummary, InventoryLookups, ItemSummary, MovementSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
+  AdministrationDashboard, AllocationSummary, BudgetLineSummary, BudgetSummary, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MovementSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
 } from '../models/api.models';
 
 @Injectable({providedIn: 'root'})
@@ -42,6 +42,13 @@ export class EemsApiService {
   getAllocations(id:string){return this.http.get<AllocationSummary[]>(`/api/v1/elections/${id}/inventory/allocations`)}
   createAllocation(id:string,body:object){return this.http.post<AllocationSummary>(`/api/v1/elections/${id}/inventory/allocations`,body)}
   acknowledgeAllocation(id:string,allocationId:string){return this.http.put<AllocationSummary>(`/api/v1/elections/${id}/inventory/allocations/${allocationId}/acknowledge`,{})}
+  getFinance(id:string){return this.http.get<FinanceWorkspace>(`/api/v1/elections/${id}/finance`)}
+  createBudget(id:string,body:{name:string;currency:string}){return this.http.post<BudgetSummary>(`/api/v1/elections/${id}/finance/budgets`,body)}
+  addBudgetLine(id:string,budgetId:string,body:{category:string;allocatedAmount:number}){return this.http.post<BudgetLineSummary>(`/api/v1/elections/${id}/finance/budgets/${budgetId}/lines`,body)}
+  createVendor(id:string,body:{name:string;registrationNumber:string}){return this.http.post<VendorSummary>(`/api/v1/elections/${id}/finance/vendors`,body)}
+  submitExpense(id:string,body:object){return this.http.post<ExpenseSummary>(`/api/v1/elections/${id}/finance/expenses`,body)}
+  decideExpense(id:string,x:ExpenseSummary,stateId:number,note:string){return this.http.post<ExpenseSummary>(`/api/v1/elections/${id}/finance/expenses/${x.expenseId}/decision`,{stateId,expectedVersion:x.version,note})}
+  recordPayment(id:string,expenseId:string,amount:number,reference:string){return this.http.post<ExpenseSummary>(`/api/v1/elections/${id}/finance/expenses/${expenseId}/payments`,{amount,reference})}
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }
   createTeam(id: string, body: {areaId: number; name: string}) { return this.http.post<TeamSummary>(`/api/v1/elections/${id}/workforce/teams`, body); }

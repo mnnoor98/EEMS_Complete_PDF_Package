@@ -15,6 +15,7 @@ public sealed class ReferenceDataOptions
     public ExportStateDefinition[] ExportStates { get; init; } = [];
     public MovementTypeDefinition[] MovementTypes { get; init; } = [];
     public AllocationStateDefinition[] AllocationStates { get; init; } = [];
+    public ExpenseStateDefinition[] ExpenseStates { get; init; } = [];
 }
 
 public sealed class ElectionTypeDefinition
@@ -78,3 +79,4 @@ public sealed class SubmissionStateDefinition { public short Id { get; init; } p
 public sealed class ExportStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsTerminal { get; init; } }
 public sealed class MovementTypeDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool RequiresSource { get; init; } public bool RequiresDestination { get; init; } }
 public sealed class AllocationStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsTerminal { get; init; } }
+public sealed class ExpenseStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsApproved { get; init; } public bool IsTerminal { get; init; } }

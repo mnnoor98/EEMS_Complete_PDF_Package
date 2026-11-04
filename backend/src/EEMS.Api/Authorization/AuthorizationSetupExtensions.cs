@@ -34,6 +34,8 @@ public static class AuthorizationSetupExtensions
             AddPolicy(options, PermissionCodes.ReportingManage);
             AddPolicy(options, PermissionCodes.InventoryRead);
             AddPolicy(options, PermissionCodes.InventoryManage);
+            AddPolicy(options, PermissionCodes.FinanceRead);
+            AddPolicy(options, PermissionCodes.FinanceManage);
         });
         return services;
     }

@@ -31,6 +31,7 @@ using EEMS.Api.ReferenceData;
 using Microsoft.EntityFrameworkCore;
 using EEMS.Api.Results;
 using EEMS.Api.Inventory;
+using EEMS.Api.Finance;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +53,7 @@ builder.Services.AddHealthChecks()
 builder.Services.AddControllers();
 builder.Services.AddScoped<ResultsReportingOperationsService>();
 builder.Services.AddScoped<InventoryOperationsService>();
+builder.Services.AddScoped<FinanceOperationsService>();
 builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddApiOpenApi();
 builder.Services.AddInitialBootstrap(builder.Configuration);

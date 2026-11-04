@@ -44,7 +44,7 @@ public sealed class WorkforceController(WorkforceOperationsService operations) :
     public async Task<ActionResult<FieldMemberSummary>> DeactivateFieldMember(Guid electionId,Guid teamId,Guid memberId,CancellationToken token){var result=await operations.DeactivateFieldMemberAsync(electionId,teamId,memberId,token);return result is null?NotFound():Ok(result);}
 
     [HttpGet("teams/{teamId:guid}/field-attendance")][Authorize(Policy=PermissionCodes.WorkforceRead)]
-    public async Task<ActionResult<IReadOnlyList<FieldAttendanceSummary>>> GetFieldAttendance(Guid electionId,Guid teamId,[FromQuery]DateOnly? date,CancellationToken token)=>Ok(await operations.GetFieldAttendanceAsync(electionId,teamId,date??DateOnly.FromDateTime(DateTime.UtcNow),token));
+    public async Task<ActionResult<IReadOnlyList<FieldAttendanceSummary>>> GetFieldAttendance(Guid electionId,Guid teamId,[FromQuery]DateOnly? date,[FromQuery]Guid? memberId,CancellationToken token)=>Ok(await operations.GetFieldAttendanceAsync(electionId,teamId,date,memberId,token));
 
     [HttpPost("teams/{teamId:guid}/field-attendance")][Authorize(Policy=PermissionCodes.WorkforceManage)]
     public async Task<ActionResult<FieldAttendanceSummary>> RecordFieldAttendance(Guid electionId,Guid teamId,RecordFieldAttendanceRequest request,CancellationToken token){if(!TryGetUserId(out var userId))return Unauthorized();var result=await operations.RecordFieldAttendanceAsync(electionId,teamId,new(request.MemberId,request.AttendanceDate,request.Status,request.Note),userId,token);return result is null?BadRequest(new{error="invalid_or_duplicate_field_attendance"}):Ok(result);}

@@ -87,11 +87,13 @@ public sealed class WorkforceOperationsService(
         member.Deactivate();await teamsDb.SaveChangesAsync(token);return ToSummary(member);
     }
 
-    public async Task<IReadOnlyList<FieldAttendanceSummary>> GetFieldAttendanceAsync(Guid electionId,Guid teamId,DateOnly attendanceDate,CancellationToken token)
+    public async Task<IReadOnlyList<FieldAttendanceSummary>> GetFieldAttendanceAsync(Guid electionId,Guid teamId,DateOnly? attendanceDate,Guid? memberId,CancellationToken token)
     {
         if(!await teamsDb.Teams.AnyAsync(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&x.Id==teamId,token))return [];
-        return await teamsDb.FieldMemberAttendances.Where(x=>x.TenantId==tenantContext.TenantId&&x.TeamId==teamId&&x.AttendanceDate==attendanceDate)
-            .OrderBy(x=>x.RecordedAtUtc).Select(x=>new FieldAttendanceSummary(x.Id,x.MemberId,x.AttendanceDate,x.Status,x.Note,x.RecordedByUserId,x.RecordedAtUtc)).ToListAsync(token);
+        var query=teamsDb.FieldMemberAttendances.Where(x=>x.TenantId==tenantContext.TenantId&&x.TeamId==teamId);
+        if(attendanceDate is not null)query=query.Where(x=>x.AttendanceDate==attendanceDate);
+        if(memberId is not null)query=query.Where(x=>x.MemberId==memberId);
+        return await query.OrderByDescending(x=>x.AttendanceDate).ThenByDescending(x=>x.RecordedAtUtc).Select(x=>new FieldAttendanceSummary(x.Id,x.MemberId,x.AttendanceDate,x.Status,x.Note,x.RecordedByUserId,x.RecordedAtUtc)).ToListAsync(token);
     }
 
     public async Task<FieldAttendanceSummary?> RecordFieldAttendanceAsync(Guid electionId,Guid teamId,RecordFieldAttendanceCommand command,Guid recordedByUserId,CancellationToken token)

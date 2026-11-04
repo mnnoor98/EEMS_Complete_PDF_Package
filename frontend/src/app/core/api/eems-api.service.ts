@@ -70,6 +70,7 @@ export class EemsApiService {
   updateFieldMember(id:string,teamId:string,memberId:string,body:object){return this.http.put<FieldMemberSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-members/${memberId}`,body)}
   deactivateFieldMember(id:string,teamId:string,memberId:string){return this.http.put<FieldMemberSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-members/${memberId}/deactivate`,{})}
   getFieldAttendance(id:string,teamId:string,date:string){return this.http.get<FieldAttendanceSummary[]>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-attendance`,{params:{date}})}
+  getFieldMemberAttendance(id:string,teamId:string,memberId:string){return this.http.get<FieldAttendanceSummary[]>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-attendance`,{params:{memberId}})}
   recordFieldAttendance(id:string,teamId:string,body:object){return this.http.post<FieldAttendanceSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/field-attendance`,body)}
   getMemberWork(id:string,teamId:string){return this.http.get<MemberWorkSummary[]>(`/api/v1/elections/${id}/workforce/teams/${teamId}/member-work`)}
   assignMemberWork(id:string,teamId:string,body:object){return this.http.post<MemberWorkSummary>(`/api/v1/elections/${id}/workforce/teams/${teamId}/member-work`,body)}

@@ -24,3 +24,4 @@
 - [ ] Verify maker-checker rules using two distinct accounts.
 - [ ] Verify audit correlation, security notifications, backup, restore, and rollback procedures.
 - [ ] Capture stakeholder acceptance and tag the approved commit as `v1.0.0-rc.1`.
+- [ ] Confirm the tag workflow published both GHCR images and created the prerelease entry.

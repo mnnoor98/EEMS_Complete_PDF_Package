@@ -1,0 +1,11 @@
+services:
+  api:
+    image: ghcr.io/mnnoor98/eems-api:${EEMS_VERSION:-v1.0.0-rc.1}
+    build: !reset null
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      Database__ApplyMigrations: "false"
+      Bootstrap__Enabled: "false"
+  web:
+    image: ghcr.io/mnnoor98/eems-web:${EEMS_VERSION:-v1.0.0-rc.1}
+    build: !reset null

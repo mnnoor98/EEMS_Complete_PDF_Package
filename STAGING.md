@@ -22,6 +22,8 @@
 
 6. Verify `/health/live`, `/health/ready`, login, dashboard, and the operational walkthrough in `RELEASE_CHECKLIST.md`.
 
+   On Windows, run `./scripts/verify-staging.ps1 -BaseUrl https://staging.example.com` for public endpoint checks, then record the full walkthrough in `STAGING_ACCEPTANCE.md`.
+
 ## Upgrade and rollback
 
 - Back up PostgreSQL before migrations and record the running image tag.

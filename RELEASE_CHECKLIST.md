@@ -8,6 +8,7 @@
 - [ ] Backend and frontend container images build.
 - [ ] `docker compose config --quiet` passes with non-production CI secrets.
 - [ ] Dependency audit findings are reviewed and accepted or remediated; do not apply breaking `--force` upgrades without regression testing.
+- [x] Development-only moderate audit findings are documented in `SECURITY_REVIEW.md`; runtime high/critical audit gate is automated.
 
 ## Environment and security
 

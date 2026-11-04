@@ -2,6 +2,7 @@ import {Routes} from '@angular/router';
 import {authGuard,permissionGuard} from './core/guards/auth.guard';
 export const routes:Routes=[
  {path:'login',loadComponent:()=>import('./features/auth/login.page').then(m=>m.LoginPage)},
+ {path:'change-password',canActivate:[authGuard],loadComponent:()=>import('./features/auth/change-password.page').then(m=>m.ChangePasswordPage)},
  {path:'',canActivate:[authGuard],loadComponent:()=>import('./layout/shell/shell.component').then(m=>m.ShellComponent),children:[
   {path:'',pathMatch:'full',redirectTo:'dashboard'},
   {path:'dashboard',canActivate:[permissionGuard],data:{permission:'dashboard.read'},loadComponent:()=>import('./features/dashboard/operations-dashboard.page').then(m=>m.OperationsDashboardPage)},

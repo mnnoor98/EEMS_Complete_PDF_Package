@@ -16,6 +16,8 @@ using EEMS.Modules.Inventory.Domain;
 using EEMS.Modules.Inventory.Infrastructure;
 using EEMS.Modules.Finance.Domain;
 using EEMS.Modules.Finance.Infrastructure;
+using EEMS.Modules.Events.Domain;
+using EEMS.Modules.Events.Infrastructure;
 
 namespace EEMS.Api.ReferenceData;
 
@@ -118,10 +120,15 @@ public static class ReferenceDataExtensions
             if (!await finance.ExpenseStates.AnyAsync(item => item.Id == definition.Id, token))
                 finance.ExpenseStates.Add(ExpenseState.Create(definition.Id, definition.Code, definition.Name, definition.IsApproved, definition.IsTerminal));
         await finance.SaveChangesAsync(token);
+        var eventDb = scope.ServiceProvider.GetRequiredService<EventsDbContext>();
+        foreach(var x in options.EventTypes)if(!await eventDb.EventTypes.AnyAsync(y=>y.Id==x.Id,token))eventDb.EventTypes.Add(EventType.Create(x.Id,x.Code,x.Name));
+        foreach(var x in options.EventStates)if(!await eventDb.EventStates.AnyAsync(y=>y.Id==x.Id,token))eventDb.EventStates.Add(EventState.Create(x.Id,x.Code,x.Name,x.IsTerminal));
+        foreach(var x in options.PermitStates)if(!await eventDb.PermitStates.AnyAsync(y=>y.Id==x.Id,token))eventDb.PermitStates.Add(PermitState.Create(x.Id,x.Code,x.Name));
+        await eventDb.SaveChangesAsync(token);
     }
 
     private static bool IsValid(ReferenceDataOptions options) =>
-        options.ElectionTypes.Length > 0 && options.LifecycleStates.Length > 0 && options.TaskStates.Length > 0 && options.TaskPriorities.Length > 0 && options.ReadinessStates.Length > 0 && options.SubmissionStates.Length > 0 && options.ExportStates.Length > 0 && options.MovementTypes.Length > 0 && options.AllocationStates.Length > 0 && options.ExpenseStates.Length > 0 &&
+        options.ElectionTypes.Length > 0 && options.LifecycleStates.Length > 0 && options.TaskStates.Length > 0 && options.TaskPriorities.Length > 0 && options.ReadinessStates.Length > 0 && options.SubmissionStates.Length > 0 && options.ExportStates.Length > 0 && options.MovementTypes.Length > 0 && options.AllocationStates.Length > 0 && options.ExpenseStates.Length > 0 && options.EventTypes.Length > 0 && options.EventStates.Length > 0 && options.PermitStates.Length > 0 &&
         options.Positions.Length > 0 && options.AreaTypes.Length > 0 && options.Areas.Length > 0 &&
         options.ElectionTypes.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.LifecycleStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
@@ -131,6 +138,7 @@ public static class ReferenceDataExtensions
         options.SubmissionStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) && options.ExportStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.MovementTypes.All(item => item.Id > 0 && (item.RequiresSource || item.RequiresDestination) && HasText(item.Code, item.Name)) && options.AllocationStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
         options.ExpenseStates.All(item => item.Id > 0 && HasText(item.Code, item.Name)) &&
+        options.EventTypes.All(item=>item.Id>0&&HasText(item.Code,item.Name)) && options.EventStates.All(item=>item.Id>0&&HasText(item.Code,item.Name)) && options.PermitStates.All(item=>item.Id>0&&HasText(item.Code,item.Name)) &&
         options.Positions.All(item => item.Id > 0 && item.ElectionTypeId > 0 && HasText(item.Code, item.Name)) &&
         options.AreaTypes.All(item => item.Id > 0 && item.Level > 0 && HasText(item.Code, item.Name)) &&
         options.Areas.All(item => item.Id > 0 && item.AreaTypeId > 0 && HasText(item.Code, item.NameBn));

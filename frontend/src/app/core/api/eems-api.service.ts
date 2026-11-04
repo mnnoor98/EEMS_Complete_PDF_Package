@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {
   AgentAssignmentSummary, AttendanceSummary, BoothSummary, CandidateSummary, CenterDetail, CenterDirectoryItem, ChecklistSummary,
   ElectionCenterSummary, ElectionLookups, ElectionSummary, PagedResult, PollingLookups, TeamMemberSummary, TeamSummary,
-  AdministrationDashboard, AllocationSummary, BudgetLineSummary, BudgetSummary, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MovementSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
+  AdministrationDashboard, AllocationSummary, BudgetLineSummary, BudgetSummary, CampaignEventSummary, EventWorkspace, ExpenseSummary, ExportSummary, FinanceWorkspace, InventoryLookups, ItemSummary, MeetingSummary, MovementSummary, PermissionSummary, ResultLookups, ResultSubmissionSummary, RoleSummary, TeamTaskSummary, TrainingSummary, UserSummary, VendorSummary, VenueSummary, VerificationSummary, WarehouseSummary, WorkforceLookups
 } from '../models/api.models';
 
 @Injectable({providedIn: 'root'})
@@ -49,6 +49,13 @@ export class EemsApiService {
   submitExpense(id:string,body:object){return this.http.post<ExpenseSummary>(`/api/v1/elections/${id}/finance/expenses`,body)}
   decideExpense(id:string,x:ExpenseSummary,stateId:number,note:string){return this.http.post<ExpenseSummary>(`/api/v1/elections/${id}/finance/expenses/${x.expenseId}/decision`,{stateId,expectedVersion:x.version,note})}
   recordPayment(id:string,expenseId:string,amount:number,reference:string){return this.http.post<ExpenseSummary>(`/api/v1/elections/${id}/finance/expenses/${expenseId}/payments`,{amount,reference})}
+  getEvents(id:string){return this.http.get<EventWorkspace>(`/api/v1/elections/${id}/events`)}
+  createVenue(id:string,body:object){return this.http.post<VenueSummary>(`/api/v1/elections/${id}/events/venues`,body)}
+  createEvent(id:string,body:object){return this.http.post<CampaignEventSummary>(`/api/v1/elections/${id}/events`,body)}
+  completeEvent(id:string,x:CampaignEventSummary,report:string){return this.http.put<CampaignEventSummary>(`/api/v1/elections/${id}/events/${x.eventId}/complete`,{expectedVersion:x.version,report})}
+  createMeeting(id:string,body:object){return this.http.post<MeetingSummary>(`/api/v1/elections/${id}/events/meetings`,body)}
+  addMeetingParticipant(id:string,meetingId:string,userId:string){return this.http.post<void>(`/api/v1/elections/${id}/events/meetings/${meetingId}/participants/${userId}`,{})}
+  markMeetingAttendance(id:string,meetingId:string,userId:string){return this.http.put<void>(`/api/v1/elections/${id}/events/meetings/${meetingId}/participants/${userId}/attendance`,{})}
   getLookups(id: string) { return this.http.get<WorkforceLookups>(`/api/v1/elections/${id}/workforce/lookups`); }
   getTeams(id: string) { return this.http.get<TeamSummary[]>(`/api/v1/elections/${id}/workforce/teams`); }
   createTeam(id: string, body: {areaId: number; name: string}) { return this.http.post<TeamSummary>(`/api/v1/elections/${id}/workforce/teams`, body); }

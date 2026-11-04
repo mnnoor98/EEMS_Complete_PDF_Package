@@ -21,4 +21,6 @@ public static class PermissionCodes
     public const string InventoryManage = "inventory.manage";
     public const string FinanceRead = "finance.read";
     public const string FinanceManage = "finance.manage";
+    public const string EventsRead = "events.read";
+    public const string EventsManage = "events.manage";
 }

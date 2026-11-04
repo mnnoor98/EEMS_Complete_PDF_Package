@@ -16,6 +16,9 @@ public sealed class ReferenceDataOptions
     public MovementTypeDefinition[] MovementTypes { get; init; } = [];
     public AllocationStateDefinition[] AllocationStates { get; init; } = [];
     public ExpenseStateDefinition[] ExpenseStates { get; init; } = [];
+    public EventTypeDefinition[] EventTypes { get; init; } = [];
+    public EventStateDefinition[] EventStates { get; init; } = [];
+    public PermitStateDefinition[] PermitStates { get; init; } = [];
 }
 
 public sealed class ElectionTypeDefinition
@@ -80,3 +83,6 @@ public sealed class ExportStateDefinition { public short Id { get; init; } publi
 public sealed class MovementTypeDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool RequiresSource { get; init; } public bool RequiresDestination { get; init; } }
 public sealed class AllocationStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsTerminal { get; init; } }
 public sealed class ExpenseStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsApproved { get; init; } public bool IsTerminal { get; init; } }
+public sealed class EventTypeDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; }
+public sealed class EventStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; public bool IsTerminal { get; init; } }
+public sealed class PermitStateDefinition { public short Id { get; init; } public string Code { get; init; } = string.Empty; public string Name { get; init; } = string.Empty; }

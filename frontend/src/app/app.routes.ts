@@ -12,6 +12,7 @@ export const routes:Routes=[
   {path:'elections/:electionId/results',canActivate:[permissionGuard],data:{permission:'results.read'},loadComponent:()=>import('./features/results/results-reporting.page').then(m=>m.ResultsReportingPage)},
   {path:'elections/:electionId/inventory',canActivate:[permissionGuard],data:{permission:'inventory.read'},loadComponent:()=>import('./features/inventory/inventory.page').then(m=>m.InventoryPage)},
   {path:'elections/:electionId/finance',canActivate:[permissionGuard],data:{permission:'finance.read'},loadComponent:()=>import('./features/finance/finance.page').then(m=>m.FinancePage)},
+  {path:'elections/:electionId/events',canActivate:[permissionGuard],data:{permission:'events.read'},loadComponent:()=>import('./features/events/events.page').then(m=>m.EventsPage)},
   {path:'administration',canActivate:[permissionGuard],data:{permission:'dashboard.read'},loadComponent:()=>import('./features/administration/administration.page').then(m=>m.AdministrationPage)},
   {path:'forbidden',loadComponent:()=>import('./shared/status/forbidden.page').then(m=>m.ForbiddenPage)}
  ]},

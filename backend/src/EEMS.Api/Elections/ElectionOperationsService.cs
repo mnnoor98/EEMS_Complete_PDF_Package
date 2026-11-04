@@ -49,6 +49,19 @@ public sealed class ElectionOperationsService(
         return true;
     }
 
+    public async Task<ElectionUpdateResult> UpdateElectionAsync(Guid electionId, UpdateElectionCommand command, CancellationToken token)
+    {
+        var election = await electionsDb.Elections.SingleOrDefaultAsync(x => x.TenantId == tenantContext.TenantId && x.Id == electionId, token);
+        if (election is null) return new(ElectionUpdateStatus.NotFound, null);
+        if (election.Version != command.ExpectedVersion) return new(ElectionUpdateStatus.VersionConflict, null);
+        var valid = await electionsDb.ElectionTypes.AnyAsync(x => x.Id == command.ElectionTypeId && x.IsActive, token) &&
+                    await geographyDb.Areas.AnyAsync(x => x.Id == command.AreaId && x.IsActive, token);
+        if (!valid) return new(ElectionUpdateStatus.InvalidReference, null);
+        election.UpdateDetails(command.ElectionTypeId, command.AreaId, command.Name, command.ElectionDate);
+        await electionsDb.SaveChangesAsync(token);
+        return new(ElectionUpdateStatus.Updated, new ElectionSummary(election.Id, election.Name, election.ElectionTypeId, election.AreaId, election.LifecycleStateId, election.ElectionDate, election.Version));
+    }
+
     public async Task<IReadOnlyList<CandidateSummary>> GetCandidatesAsync(Guid electionId, CancellationToken token) =>
         await (from assignment in candidatesDb.CandidateElections
                join candidate in candidatesDb.Candidates on assignment.CandidateId equals candidate.Id
@@ -114,6 +127,9 @@ public sealed record AreaReference(long Id, long? ParentAreaId, short AreaTypeId
 public sealed record ElectionLookups(IReadOnlyList<ReferenceItem<short>> ElectionTypes, IReadOnlyList<LifecycleReference> LifecycleStates, IReadOnlyList<PositionReference> Positions, IReadOnlyList<AreaReference> Areas);
 public sealed record ElectionSummary(Guid ElectionId, string Name, short ElectionTypeId, long AreaId, short LifecycleStateId, DateOnly ElectionDate, int Version);
 public sealed record CreateElectionCommand(short ElectionTypeId, long AreaId, short LifecycleStateId, string Name, DateOnly ElectionDate);
+public sealed record UpdateElectionCommand(short ElectionTypeId, long AreaId, string Name, DateOnly ElectionDate, int ExpectedVersion);
+public enum ElectionUpdateStatus { Updated, NotFound, InvalidReference, VersionConflict }
+public sealed record ElectionUpdateResult(ElectionUpdateStatus Status, ElectionSummary? Election);
 public sealed record AddCandidateCommand(string Name, string? ExternalReference, long PositionId, long AreaId, string? NominationReference);
 public sealed record CandidateSummary(Guid CandidateId, Guid AssignmentId, string Name, string? ExternalReference, long PositionId, long AreaId, string? NominationReference, bool IsActive);
 public sealed record AddElectionCenterCommand(long AreaId, string Code, string Name, string? Address);

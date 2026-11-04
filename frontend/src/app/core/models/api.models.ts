@@ -1,5 +1,9 @@
 export interface TokenResponse{accessToken:string;accessTokenExpiresAtUtc:string;refreshToken:string;refreshTokenExpiresAtUtc:string;passwordChangeRequired:boolean}
 export interface ElectionSummary{electionId:string;name:string;electionTypeId:number;areaId:number;lifecycleStateId:number;electionDate:string;version:number}
+export interface ReferenceItem{id:number;code:string;name:string}
+export interface LifecycleReference extends ReferenceItem{isTerminal:boolean}
+export interface AreaReference{id:number;parentAreaId:number|null;areaTypeId:number;code:string;nameBn:string;nameEn:string|null}
+export interface ElectionLookups{electionTypes:ReferenceItem[];lifecycleStates:LifecycleReference[];positions:ReferenceItem[];areas:AreaReference[]}
 export interface TeamSummary{teamId:string;areaId:number;name:string;isActive:boolean;createdAtUtc:string}
 export interface TeamMemberSummary{userId:string;displayName:string;username:string;responsibility:string;joinedAtUtc:string;isActive:boolean}
 export interface TaskStateSummary{id:number;code:string;name:string;isTerminal:boolean} export interface TaskPrioritySummary{id:number;code:string;name:string;rank:number}

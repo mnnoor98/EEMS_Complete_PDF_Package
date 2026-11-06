@@ -65,9 +65,25 @@ public sealed class ElectionOperationsService(
     public async Task<IReadOnlyList<CandidateSummary>> GetCandidatesAsync(Guid electionId, CancellationToken token) =>
         await (from assignment in candidatesDb.CandidateElections
                join candidate in candidatesDb.Candidates on assignment.CandidateId equals candidate.Id
+               join symbol in candidatesDb.Symbols on assignment.SymbolId ?? candidate.SymbolId equals (int?)symbol.Id into symGroup
+               from sym in symGroup.DefaultIfEmpty()
                where assignment.TenantId == tenantContext.TenantId && assignment.ElectionId == electionId
                orderby candidate.Name
-               select new CandidateSummary(candidate.Id, assignment.Id, candidate.Name, candidate.ExternalReference, assignment.PositionId, assignment.AreaId, assignment.NominationReference, assignment.IsActive)).ToListAsync(token);
+               select new CandidateSummary(
+                   candidate.Id,
+                   assignment.Id,
+                   candidate.Name,
+                   candidate.ExternalReference,
+                   assignment.PositionId,
+                   assignment.AreaId,
+                   assignment.NominationReference,
+                   assignment.IsActive,
+                   assignment.SymbolId ?? candidate.SymbolId,
+                   sym != null ? sym.NameBn : null,
+                   sym != null ? sym.NameEn : null,
+                   sym != null ? sym.IconEmoji : null,
+                   assignment.PartyName ?? candidate.PartyNameBn,
+                   assignment.Slogan ?? candidate.Slogan)).ToListAsync(token);
 
     public async Task<CandidateSummary?> AddCandidateAsync(Guid electionId, AddCandidateCommand command, CancellationToken token)
     {
@@ -75,13 +91,28 @@ public sealed class ElectionOperationsService(
         var positionExists = election is not null && await electionsDb.Positions.AnyAsync(x => x.Id == command.PositionId && x.ElectionTypeId == election.ElectionTypeId && x.IsActive, token);
         var areaExists = await geographyDb.Areas.AnyAsync(x => x.Id == command.AreaId && x.IsActive, token);
         if (election is null || !positionExists || !areaExists) return null;
-        var candidate = Candidate.Create(tenantContext.TenantId, command.Name, command.ExternalReference);
+        var candidate = Candidate.Create(tenantContext.TenantId, command.Name, command.ExternalReference, command.SymbolId, command.PartyName, command.PartyName, command.Slogan);
         candidatesDb.Candidates.Add(candidate);
         await candidatesDb.SaveChangesAsync(token);
-        var assignment = CandidateElection.Create(tenantContext.TenantId, electionId, candidate.Id, command.PositionId, command.AreaId, command.NominationReference);
+        var assignment = CandidateElection.Create(tenantContext.TenantId, electionId, candidate.Id, command.PositionId, command.AreaId, command.NominationReference, command.SymbolId, command.PartyName, command.Slogan);
         candidatesDb.CandidateElections.Add(assignment);
         await candidatesDb.SaveChangesAsync(token);
-        return new CandidateSummary(candidate.Id, assignment.Id, candidate.Name, candidate.ExternalReference, assignment.PositionId, assignment.AreaId, assignment.NominationReference, true);
+        var sym = command.SymbolId.HasValue ? await candidatesDb.Symbols.SingleOrDefaultAsync(s => s.Id == command.SymbolId.Value, token) : null;
+        return new CandidateSummary(
+            candidate.Id,
+            assignment.Id,
+            candidate.Name,
+            candidate.ExternalReference,
+            assignment.PositionId,
+            assignment.AreaId,
+            assignment.NominationReference,
+            true,
+            command.SymbolId,
+            sym?.NameBn,
+            sym?.NameEn,
+            sym?.IconEmoji,
+            command.PartyName,
+            command.Slogan);
     }
 
     public async Task<IReadOnlyList<ElectionCenterSummary>> GetElectionCentersAsync(Guid electionId, CancellationToken token) =>
@@ -131,7 +162,30 @@ public sealed record CreateElectionCommand(short ElectionTypeId, long AreaId, sh
 public sealed record UpdateElectionCommand(short ElectionTypeId, long AreaId, string Name, DateOnly ElectionDate, int ExpectedVersion);
 public enum ElectionUpdateStatus { Updated, NotFound, InvalidReference, VersionConflict }
 public sealed record ElectionUpdateResult(ElectionUpdateStatus Status, ElectionSummary? Election);
-public sealed record AddCandidateCommand(string Name, string? ExternalReference, long PositionId, long AreaId, string? NominationReference);
-public sealed record CandidateSummary(Guid CandidateId, Guid AssignmentId, string Name, string? ExternalReference, long PositionId, long AreaId, string? NominationReference, bool IsActive);
+public sealed record AddCandidateCommand(
+    string Name,
+    string? ExternalReference,
+    long PositionId,
+    long AreaId,
+    string? NominationReference,
+    int? SymbolId = null,
+    string? PartyName = null,
+    string? Slogan = null);
+
+public sealed record CandidateSummary(
+    Guid CandidateId,
+    Guid AssignmentId,
+    string Name,
+    string? ExternalReference,
+    long PositionId,
+    long AreaId,
+    string? NominationReference,
+    bool IsActive,
+    int? SymbolId = null,
+    string? SymbolNameBn = null,
+    string? SymbolNameEn = null,
+    string? SymbolEmoji = null,
+    string? PartyName = null,
+    string? Slogan = null);
 public sealed record AddElectionCenterCommand(long AreaId, string Code, string Name, string? Address);
 public sealed record ElectionCenterSummary(Guid ElectionCenterId, Guid CenterId, long AreaId, string Code, string Name, string? Address, bool IsVerified);

@@ -21,9 +21,14 @@ public sealed class AdministrationController(IdentityAdministrationService admin
     public async Task<ActionResult<UserSummary>> CreateUser(CreateUserRequest request, CancellationToken cancellationToken)
     {
         var created = await administration.CreateUserAsync(
-            new CreateUserCommand(request.Username, request.DisplayName, request.Email, request.InitialPassword), cancellationToken);
+            new CreateUserCommand(request.Username, request.DisplayName, request.Email, request.InitialPassword, request.CandidateId), cancellationToken);
         return created is null ? Conflict(new { error = "username_exists" }) : CreatedAtAction(nameof(GetUsers), created);
     }
+
+    [HttpPut("users/{userId:guid}/candidate")]
+    [Authorize(Policy = PermissionCodes.UsersManage)]
+    public async Task<IActionResult> AssignCandidate(Guid userId, AssignCandidateRequest request, CancellationToken cancellationToken) =>
+        await administration.AssignCandidateAsync(userId, request.CandidateId, cancellationToken) ? NoContent() : NotFound();
 
     [HttpPut("users/{userId:guid}/active")]
     [Authorize(Policy = PermissionCodes.UsersManage)]
@@ -71,7 +76,9 @@ public sealed record CreateUserRequest(
     [Required, MaxLength(200)] string Username,
     [Required, MaxLength(200)] string DisplayName,
     [EmailAddress, MaxLength(320)] string? Email,
-    [Required, MinLength(12), MaxLength(200)] string InitialPassword);
+    [Required, MinLength(12), MaxLength(200)] string InitialPassword,
+    Guid? CandidateId = null);
+public sealed record AssignCandidateRequest(Guid? CandidateId);
 public sealed record SetActiveRequest(bool IsActive);
 public sealed record CreateRoleRequest([Required, MaxLength(80)] string Code, [Required, MaxLength(120)] string Name);
 public sealed record AssignPermissionRequest([Required, MaxLength(120)] string PermissionCode);

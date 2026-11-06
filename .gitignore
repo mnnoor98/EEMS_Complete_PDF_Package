@@ -30,3 +30,11 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+
+# WhatsApp Baileys Auth Session
+**/auth_info_baileys/
+services/whatsapp-bot/node_modules/
+**/__pycache__/
+*.pyc
+
+scripts/*.png

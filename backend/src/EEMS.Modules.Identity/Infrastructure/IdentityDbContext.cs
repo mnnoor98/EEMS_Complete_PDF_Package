@@ -41,6 +41,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         var tenantUser = modelBuilder.Entity<TenantUser>();
         tenantUser.ToTable("tenant_users"); tenantUser.HasKey(x => new { x.TenantId, x.UserId });
         tenantUser.Property(x => x.TenantId).HasColumnName("tenant_id"); tenantUser.Property(x => x.UserId).HasColumnName("user_id");
+        tenantUser.Property(x => x.CandidateId).HasColumnName("candidate_id");
         tenantUser.Property(x => x.IsActive).HasColumnName("is_active"); tenantUser.Property(x => x.JoinedAtUtc).HasColumnName("joined_at");
         tenantUser.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
 

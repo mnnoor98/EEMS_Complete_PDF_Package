@@ -29,17 +29,17 @@ public sealed class PollingOperationsService(PollingDbContext pollingDb,Operatio
     public async Task<CenterDetail?> GetCenterAsync(Guid electionId,Guid electionCenterId,CancellationToken token)
     {
         var center=await (from link in pollingDb.ElectionCenters join item in pollingDb.Centers on link.CenterId equals item.Id
-            where link.TenantId==tenantContext.TenantId&&link.ElectionId==electionId&&link.Id==electionCenterId
+            where link.TenantId==tenantContext.TenantId&&link.ElectionId==electionId&&(link.Id==electionCenterId||link.CenterId==electionCenterId)
             select new CenterDirectoryItem(link.Id,item.Id,item.AreaId,item.Code,item.Name,item.Address,link.IsVerified,0,0)).SingleOrDefaultAsync(token);
         if(center is null)return null;
         var booths=await pollingDb.Booths.Where(x=>x.CenterId==center.CenterId).OrderBy(x=>x.Code).Select(x=>new BoothSummary(x.Id,x.Code,x.Name,x.IsActive)).ToListAsync(token);
-        var assignments=await pollingDb.AgentAssignments.Where(x=>x.TenantId==tenantContext.TenantId&&x.ElectionCenterId==electionCenterId).OrderBy(x=>x.StartsAtUtc).ToListAsync(token);
-        var verifications=await pollingDb.CenterVerifications.Where(x=>x.TenantId==tenantContext.TenantId&&x.ElectionCenterId==electionCenterId).OrderByDescending(x=>x.VerifiedAtUtc).ToListAsync(token);
+        var assignments=await pollingDb.AgentAssignments.Where(x=>x.TenantId==tenantContext.TenantId&&(x.ElectionCenterId==center.ElectionCenterId||x.ElectionCenterId==center.CenterId)).OrderBy(x=>x.StartsAtUtc).ToListAsync(token);
+        var verifications=await pollingDb.CenterVerifications.Where(x=>x.TenantId==tenantContext.TenantId&&(x.ElectionCenterId==center.ElectionCenterId||x.ElectionCenterId==center.CenterId)).OrderByDescending(x=>x.VerifiedAtUtc).ToListAsync(token);
         var userIds=assignments.Select(x=>x.UserId).Concat(verifications.Select(x=>x.VerifiedByUserId)).Distinct().ToArray();
         var users=await identityDb.Users.Where(x=>userIds.Contains(x.Id)).ToDictionaryAsync(x=>x.Id,token);
         var agentItems=assignments.Select(x=>new CenterAgentSummary(x.Id,x.UserId,users.GetValueOrDefault(x.UserId)?.DisplayName??"Unknown user",x.StartsAtUtc,x.EndsAtUtc,x.IsActive)).ToList();
         var history=verifications.Select(x=>new VerificationSummary(x.Id,x.VerifiedByUserId,users.GetValueOrDefault(x.VerifiedByUserId)?.DisplayName??"Unknown user",x.VerifiedAtUtc)).ToList();
-        var checklists=await operationsDb.Checklists.Where(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&x.ElectionCenterId==electionCenterId).OrderBy(x=>x.Name).ToListAsync(token);
+        var checklists=await operationsDb.Checklists.Where(x=>x.TenantId==tenantContext.TenantId&&x.ElectionId==electionId&&(x.ElectionCenterId==center.ElectionCenterId||x.ElectionCenterId==center.CenterId)).OrderBy(x=>x.Name).ToListAsync(token);
         var checklistIds=checklists.Select(x=>x.Id).ToArray();
         var items=await operationsDb.ChecklistItems.Where(x=>x.TenantId==tenantContext.TenantId&&checklistIds.Contains(x.ChecklistId)).OrderBy(x=>x.Requirement).ToListAsync(token);
         var readiness=checklists.Select(x=>new ChecklistSummary(x.Id,x.Name,x.StateId,x.Version,items.Where(i=>i.ChecklistId==x.Id).Select(i=>new ChecklistItemSummary(i.Id,i.Requirement,i.IsComplete,i.CompletedByUserId,i.CompletedAtUtc)).ToList())).ToList();

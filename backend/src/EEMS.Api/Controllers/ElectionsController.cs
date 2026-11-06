@@ -54,7 +54,15 @@ public sealed class ElectionsController(ElectionOperationsService operations) : 
     [Authorize(Policy = PermissionCodes.ElectionsManage)]
     public async Task<ActionResult<CandidateSummary>> AddCandidate(Guid electionId, AddCandidateRequest request, CancellationToken token)
     {
-        var created = await operations.AddCandidateAsync(electionId, new AddCandidateCommand(request.Name, request.ExternalReference, request.PositionId, request.AreaId, request.NominationReference), token);
+        var created = await operations.AddCandidateAsync(electionId, new AddCandidateCommand(
+            request.Name,
+            request.ExternalReference,
+            request.PositionId,
+            request.AreaId,
+            request.NominationReference,
+            request.SymbolId,
+            request.PartyName,
+            request.Slogan), token);
         return created is null ? BadRequest(new { error = "invalid_candidate_reference" }) : Ok(created);
     }
 
@@ -63,7 +71,7 @@ public sealed class ElectionsController(ElectionOperationsService operations) : 
     public async Task<ActionResult<IReadOnlyList<ElectionCenterSummary>>> GetCenters(Guid electionId, CancellationToken token) => Ok(await operations.GetElectionCentersAsync(electionId, token));
 
     [HttpPost("{electionId:guid}/centers")]
-    [Authorize(Policy = PermissionCodes.ElectionsManage)]
+    [Authorize(Policy = PermissionCodes.PollingManage)]
     public async Task<ActionResult<ElectionCenterSummary>> AddCenter(Guid electionId, AddElectionCenterRequest request, CancellationToken token)
     {
         var created = await operations.AddElectionCenterAsync(electionId, new AddElectionCenterCommand(request.AreaId, request.Code, request.Name, request.Address), token);
@@ -79,5 +87,13 @@ public sealed class ElectionsController(ElectionOperationsService operations) : 
 public sealed record CreateElectionRequest(short ElectionTypeId, long AreaId, short LifecycleStateId, [Required, MaxLength(200)] string Name, DateOnly ElectionDate);
 public sealed record UpdateElectionRequest(short ElectionTypeId, long AreaId, [Required, MaxLength(200)] string Name, DateOnly ElectionDate, int ExpectedVersion);
 public sealed record MoveElectionRequest(short LifecycleStateId, int ExpectedVersion);
-public sealed record AddCandidateRequest([Required, MaxLength(200)] string Name, [MaxLength(100)] string? ExternalReference, long PositionId, long AreaId, [MaxLength(120)] string? NominationReference);
+public sealed record AddCandidateRequest(
+    [Required, MaxLength(200)] string Name,
+    [MaxLength(100)] string? ExternalReference,
+    long PositionId,
+    long AreaId,
+    [MaxLength(120)] string? NominationReference,
+    int? SymbolId = null,
+    [MaxLength(150)] string? PartyName = null,
+    [MaxLength(300)] string? Slogan = null);
 public sealed record AddElectionCenterRequest(long AreaId, [Required, MaxLength(50)] string Code, [Required, MaxLength(250)] string Name, [MaxLength(500)] string? Address);

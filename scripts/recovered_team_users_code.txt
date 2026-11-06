@@ -1,0 +1,175 @@
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = "bot_error", message = ex.Message });
+        }
+    }
+
+    // =========================================================================
+    // 10E. CANDIDATE TEAM & SUB-USERS (মাস্টার প্রার্থীর সাব-ইউজার ও কর্মী ব্যবস্থাপনা)
+    // =========================================================================
+
+    [HttpGet("team-users")]
+    [Authorize(Policy = PermissionCodes.UsersRead)]
+    public async Task<ActionResult<IReadOnlyList<CandidateTeamUserItem>>> GetCandidateTeamUsers(
+        [FromQuery] Guid? candidateId,
+        CancellationToken token)
+    {
+        var tenantId = tenantContext.TenantId;
+        var (userCandidateId, isSuperAdmin) = GetUserCandidateScope();
+        var targetCandidateId = userCandidateId ?? candidateId;
+
+        if (!targetCandidateId.HasValue && !isSuperAdmin)
+        {
+            return Ok(Array.Empty<CandidateTeamUserItem>());
+        }
+
+        var conn = identityDb.Database.GetDbConnection();
+        if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync(token);
+
+        await using var cmd = conn.CreateCommand();
+        if (targetCandidateId.HasValue)
+        {
+            cmd.CommandText = @"
+                SELECT u.user_id, u.external_subject, u.display_name, u.email, tu.candidate_id, tu.is_active, u.created_at
+                FROM iam.tenant_users tu
+                JOIN iam.users u ON tu.user_id = u.user_id
+                WHERE tu.tenant_id = @t AND tu.candidate_id = @c
+                ORDER BY u.created_at DESC;";
+            var pC = cmd.CreateParameter(); pC.ParameterName = "@c"; pC.Value = targetCandidateId.Value; cmd.Parameters.Add(pC);
+        }
+        else
+        {
+            cmd.CommandText = @"
+                SELECT u.user_id, u.external_subject, u.display_name, u.email, tu.candidate_id, tu.is_active, u.created_at
+                FROM iam.tenant_users tu
+                JOIN iam.users u ON tu.user_id = u.user_id
+                WHERE tu.tenant_id = @t AND tu.candidate_id IS NOT NULL
+                ORDER BY u.created_at DESC;";
+        }
+        var pT = cmd.CreateParameter(); pT.ParameterName = "@t"; pT.Value = tenantId; cmd.Parameters.Add(pT);
+
+        var list = new List<CandidateTeamUserItem>();
+        await using var reader = await cmd.ExecuteReaderAsync(token);
+        while (await reader.ReadAsync(token))
+        {
+            list.Add(new CandidateTeamUserItem(
+                reader.GetGuid(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3),
+                null,
+                "ক্যাম্পেইন টিম সদস্য",
+                reader.GetBoolean(5),
+                new DateTimeOffset(reader.GetDateTime(6), TimeSpan.Zero)
+            ));
+        }
+
+        return Ok(list);
+    }
+
+    [HttpPost("team-users")]
+    [Authorize(Policy = PermissionCodes.UsersManage)]
+    public async Task<ActionResult<CandidateTeamUserItem>> CreateCandidateTeamUser(
+        [FromBody] CreateCandidateTeamUserRequest request,
+        CancellationToken token)
+    {
+        var tenantId = tenantContext.TenantId;
+        var (userCandidateId, isSuperAdmin) = GetUserCandidateScope();
+        var targetCandidateId = userCandidateId ?? request.CandidateId;
+
+        if (!targetCandidateId.HasValue)
+        {
+            return BadRequest(new { error = "candidate_required", message = "প্রার্থী নির্ধারণ করা হয়নি।" });
+        }
+
+        var normalizedUsername = request.Username.Trim().ToLowerInvariant();
+        if (await identityDb.Users.AnyAsync(u => u.ExternalSubject.ToLower() == normalizedUsername, token))
+        {
+            return Conflict(new { error = "username_exists", message = "এই ব্যবহারকারী আইডি (Username) ইতোমধ্যে ব্যবহৃত হচ্ছে। অন্য আইডি দিন।" });
+        }
+
+        var user = User.Create(normalizedUsername, request.DisplayName.Trim(), request.Email?.Trim());
+        identityDb.Users.Add(user);
+
+        var tenantUser = TenantUser.Create(tenantId, user.Id, targetCandidateId.Value);
+        identityDb.TenantUsers.Add(tenantUser);
+
+        var hash = passwordHasher.HashPassword(user, request.Password.Trim());
+        identityDb.PasswordCredentials.Add(PasswordCredential.Create(user.Id, hash));
+
+        await identityDb.SaveChangesAsync(token);
+
+        return Ok(new CandidateTeamUserItem(
+            user.Id,
+            user.ExternalSubject,
+            user.DisplayName,
+            user.Email,
+            request.Phone?.Trim(),
+            request.Role?.Trim() ?? "ক্যাম্পেইন টিম সদস্য",
+            true,
+            user.CreatedAtUtc
+        ));
+    }
+
+    [HttpPut("team-users/{userId:guid}/status")]
+    [Authorize(Policy = PermissionCodes.UsersManage)]
+    public async Task<IActionResult> ToggleTeamUserStatus(
+        Guid userId,
+        [FromBody] ToggleUserStatusRequest request,
+        CancellationToken token)
+    {
+        var tenantId = tenantContext.TenantId;
+        var (userCandidateId, isSuperAdmin) = GetUserCandidateScope();
+
+        var tu = await identityDb.TenantUsers.SingleOrDefaultAsync(
+            x => x.TenantId == tenantId && x.UserId == userId, token);
+
+        if (tu == null) return NotFound(new { error = "user_not_found" });
+
+        if (userCandidateId.HasValue && tu.CandidateId != userCandidateId.Value)
+        {
+            return Forbid();
+        }
+
+        if (request.IsActive) tu.Enable(); else tu.Disable();
+        await identityDb.SaveChangesAsync(token);
+        return NoContent();
+    }
+
+    [HttpPost("team-users/{userId:guid}/reset-password")]
+    [Authorize(Policy = PermissionCodes.UsersManage)]
+    public async Task<IActionResult> ResetTeamUserPassword(
+        Guid userId,
+        [FromBody] ResetPasswordRequest request,
+        CancellationToken token)
+    {
+        var tenantId = tenantContext.TenantId;
+        var (userCandidateId, isSuperAdmin) = GetUserCandidateScope();
+
+        var tu = await identityDb.TenantUsers.SingleOrDefaultAsync(
+            x => x.TenantId == tenantId && x.UserId == userId, token);
+
+        if (tu == null) return NotFound(new { error = "user_not_found" });
+
+        if (userCandidateId.HasValue && tu.CandidateId != userCandidateId.Value)
+        {
+            return Forbid();
+        }
+
+        var user = await identityDb.Users.SingleOrDefaultAsync(u => u.Id == userId, token);
+        if (user == null) return NotFound();
+
+        var cred = await identityDb.PasswordCredentials.SingleOrDefaultAsync(p => p.UserId == userId, token);
+        var newHash = passwordHasher.HashPassword(user, request.NewPassword.Trim());
+        if (cred != null)
+        {
+            cred.ChangePassword(newHash);
+        }
+        else
+        {
+            identityDb.PasswordCredentials.Add(PasswordCredential.Create(userId, newHash));
+        }
+
+        await identityDb.SaveChangesAsync(token);
+        return NoContent();
+    }

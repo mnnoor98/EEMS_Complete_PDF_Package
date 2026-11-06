@@ -7,8 +7,9 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
     {
         if (context.User.Identity?.IsAuthenticated == true &&
-            context.User.Claims.Any(claim => claim.Type == IdentityClaimTypes.Permission &&
-                                             string.Equals(claim.Value, requirement.PermissionCode, StringComparison.OrdinalIgnoreCase)))
+            (context.User.Claims.Any(claim => claim.Type == IdentityClaimTypes.IsSuperAdmin && string.Equals(claim.Value, "true", StringComparison.OrdinalIgnoreCase)) ||
+             context.User.Claims.Any(claim => claim.Type == IdentityClaimTypes.Permission &&
+                                             string.Equals(claim.Value, requirement.PermissionCode, StringComparison.OrdinalIgnoreCase))))
         {
             context.Succeed(requirement);
         }

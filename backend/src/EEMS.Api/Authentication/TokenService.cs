@@ -17,7 +17,10 @@ public sealed class TokenService(IOptions<JwtOptions> options)
         User user,
         Guid tenantId,
         IReadOnlyCollection<string> permissions,
-        bool passwordChangeRequired)
+        bool passwordChangeRequired,
+        Guid? candidateId = null,
+        string? candidateName = null,
+        Guid? candidateElectionId = null)
     {
         EnsureSigningKey();
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(_options.AccessTokenMinutes);
@@ -28,7 +31,42 @@ public sealed class TokenService(IOptions<JwtOptions> options)
             new(IdentityClaimTypes.TenantId, tenantId.ToString()),
             new(IdentityClaimTypes.PasswordChangeRequired, passwordChangeRequired.ToString().ToLowerInvariant())
         };
-        claims.AddRange(permissions.Select(permission => new Claim(IdentityClaimTypes.Permission, permission)));
+        if (candidateId.HasValue)
+        {
+            claims.Add(new Claim(IdentityClaimTypes.CandidateId, candidateId.Value.ToString()));
+            if (!string.IsNullOrWhiteSpace(candidateName))
+            {
+                claims.Add(new Claim(IdentityClaimTypes.CandidateName, candidateName));
+            }
+            if (candidateElectionId.HasValue)
+            {
+                claims.Add(new Claim(IdentityClaimTypes.CandidateElectionId, candidateElectionId.Value.ToString()));
+            }
+            claims.Add(new Claim(IdentityClaimTypes.IsSuperAdmin, "false"));
+
+            var candPerms = new[]
+            {
+                Authorization.PermissionCodes.DashboardRead,
+                Authorization.PermissionCodes.ElectionsRead,
+                Authorization.PermissionCodes.PollingRead,
+                Authorization.PermissionCodes.PollingManage,
+                Authorization.PermissionCodes.ResultsRead,
+                Authorization.PermissionCodes.ResultsManage,
+                Authorization.PermissionCodes.FinanceRead,
+                Authorization.PermissionCodes.FinanceManage,
+                Authorization.PermissionCodes.EventsRead,
+                Authorization.PermissionCodes.EventsManage,
+                Authorization.PermissionCodes.UsersRead,
+                Authorization.PermissionCodes.UsersManage
+            };
+            var combinedPerms = permissions.Union(candPerms, StringComparer.OrdinalIgnoreCase);
+            claims.AddRange(combinedPerms.Select(permission => new Claim(IdentityClaimTypes.Permission, permission)));
+        }
+        else
+        {
+            claims.Add(new Claim(IdentityClaimTypes.IsSuperAdmin, "true"));
+            claims.AddRange(permissions.Select(permission => new Claim(IdentityClaimTypes.Permission, permission)));
+        }
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),

@@ -94,7 +94,11 @@ public sealed record TokenResponse(
     DateTimeOffset AccessTokenExpiresAtUtc,
     string RefreshToken,
     DateTimeOffset RefreshTokenExpiresAtUtc,
-    bool PasswordChangeRequired)
+    bool PasswordChangeRequired,
+    Guid? CandidateId = null,
+    string? CandidateName = null,
+    bool IsSuperAdmin = true,
+    Guid? CandidateElectionId = null)
 {
     public static TokenResponse From(TokenPair pair) =>
         new(
@@ -102,5 +106,9 @@ public sealed record TokenResponse(
             pair.AccessTokenExpiresAtUtc,
             pair.RefreshToken,
             pair.RefreshTokenExpiresAtUtc,
-            pair.PasswordChangeRequired);
+            pair.PasswordChangeRequired,
+            pair.CandidateId,
+            pair.CandidateName,
+            pair.IsSuperAdmin,
+            pair.CandidateElectionId);
 }

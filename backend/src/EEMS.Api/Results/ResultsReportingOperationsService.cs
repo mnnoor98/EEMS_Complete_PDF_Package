@@ -65,7 +65,12 @@ public sealed class ResultsReportingOperationsService(ResultsDbContext resultsDb
         return ToSummary(submission, details, verification);
     }
 
-    public async Task<IReadOnlyList<ExportSummary>> GetExportsAsync(Guid electionId, CancellationToken token) => await reportingDb.ExportLogs.Where(x => x.TenantId == tenantContext.TenantId && x.FiltersJson.Contains(electionId.ToString())).OrderByDescending(x => x.RequestedAtUtc).Select(x => new ExportSummary(x.Id, x.StateId, x.ReportType, x.Format, x.RequestedAtUtc, x.CompletedAtUtc, x.StorageKey)).ToListAsync(token);
+    public async Task<IReadOnlyList<ExportSummary>> GetExportsAsync(Guid electionId, CancellationToken token) =>
+        await reportingDb.ExportLogs
+            .Where(x => x.TenantId == tenantContext.TenantId && EF.Functions.JsonContains(x.FiltersJson, $"{{\"electionId\":\"{electionId}\"}}"))
+            .OrderByDescending(x => x.RequestedAtUtc)
+            .Select(x => new ExportSummary(x.Id, x.StateId, x.ReportType, x.Format, x.RequestedAtUtc, x.CompletedAtUtc, x.StorageKey))
+            .ToListAsync(token);
 
     public async Task<ExportSummary?> RequestExportAsync(Guid electionId, Guid userId, RequestExportCommand command, CancellationToken token)
     {

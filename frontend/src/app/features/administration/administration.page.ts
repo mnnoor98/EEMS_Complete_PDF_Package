@@ -1,18 +1,19 @@
+import {RouterLink} from '@angular/router';
 import {DatePipe} from '@angular/common';
 import {ChangeDetectionStrategy,Component,inject,signal} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {forkJoin,map,Observable,of,switchMap} from 'rxjs';
 import {AuthService} from '../../core/auth/auth.service';
 import {EemsApiService} from '../../core/api/eems-api.service';
-import {AdministrationDashboard,PermissionSummary,RoleSummary,UserSummary} from '../../core/models/api.models';
+import {AdministrationDashboard,CandidateWarRoomHero,PermissionSummary,RoleSummary,UserSummary} from '../../core/models/api.models';
 
-@Component({selector:'eems-administration',imports:[DatePipe,FormsModule],changeDetection:ChangeDetectionStrategy.OnPush,template:`
-  <section class="heading"><div><p class="eyebrow">Identity & security</p><h1 class="page-title">Administration</h1><p>Manage tenant users, roles, permissions and recent security activity.</p></div><button class="outline" (click)="load()">↻ Refresh</button></section>
+@Component({selector:'eems-administration',imports:[DatePipe,FormsModule,RouterLink],changeDetection:ChangeDetectionStrategy.OnPush,template:`
+  <section class="heading"><div><p class="eyebrow">Identity & candidate scoping</p><h1 class="page-title">Administration & User Scoping</h1><p>Manage tenant users, assign users to candidates, configure roles & permissions.</p></div><button class="outline" (click)="load()">↻ Refresh</button></section>
   @if(error()){<div class="error-banner">{{error()}}</div>}@if(notice()){<div class="success-banner">{{notice()}}</div>}
   @if(dashboard();as summary){<section class="stats"><article class="card"><span>Total users</span><b>{{summary.totalUsers}}</b></article><article class="card"><span>Active users</span><b>{{summary.activeUsers}}</b></article><article class="card"><span>Active roles</span><b>{{summary.activeRoles}}</b></article><article class="card"><span>Security events</span><b>{{summary.recentSecurityEvents.length}}</b></article></section>}
   @if(loading()){<div class="card empty">Loading administration data…</div>}@else{<div class="layout">
-    <section class="card panel"><header><div><p class="eyebrow">Staff directory</p><h2>Staff accounts</h2></div>@if(canManageUsers()){<button class="primary-button" (click)="openOnboarding()">+ Onboard staff</button>}</header>
-      <div class="list">@for(user of users();track user.userId){<article><span class="avatar">{{user.displayName.charAt(0)}}</span><div><b>{{user.displayName}}</b><small>{{user.username}} · {{user.email||'No email'}}</small><div class="tags">@for(code of user.roleCodes;track code){<em>{{code}}</em>}@empty{<em>No role</em>}</div></div><span [class]="user.isActive?'status':'status inactive'">{{user.isActive?'Active':'Disabled'}}</span>@if(canManageUsers()){<button class="outline" (click)="setActive(user)">{{user.isActive?'Disable':'Enable'}}</button>}@if(canManageRoles()){<select aria-label="Assign role" (change)="assignRole(user,$any($event.target).value);$any($event.target).value='' "><option value="">+ Role</option>@for(role of roles();track role.roleId){<option [value]="role.roleId">{{role.name}}</option>}</select>}</article>}@empty{<div class="empty">No users found.</div>}</div>
+    <section class="card panel"><header><div><p class="eyebrow">Staff directory</p><h2>Staff & Candidate Accounts</h2></div>@if(canManageUsers()){<div style="display:flex;gap:8px;"><a routerLink="/administration/users" class="outline" style="text-decoration:none;font-size:0.8rem;display:inline-flex;align-items:center;background:#eef6f8;color:var(--teal);">👥 ইউজার তৈরি পেজ →</a><button class="primary-button" (click)="openOnboarding()">+ Onboard staff</button></div>}</header>
+      <div class="list">@for(user of users();track user.userId){<article><span class="avatar">{{user.displayName.charAt(0)}}</span><div><b>{{user.displayName}}</b><small>{{user.username}} · {{user.email||'No email'}}</small><div class="tags">@for(code of user.roleCodes;track code){<em>{{code}}</em>}@empty{<em>No role</em>}</div><div class="cand-row">@if(user.candidateName){<span class="cand-badge">🏺 {{user.candidateName}}</span>}@else{<span class="cand-badge super">👑 কেন্দ্রীয় সুপার অ্যাডমিন</span>}</div></div><span [class]="user.isActive?'status':'status inactive'">{{user.isActive?'Active':'Disabled'}}</span>@if(canManageUsers()){<button class="outline" (click)="setActive(user)">{{user.isActive?'Disable':'Enable'}}</button>}@if(canManageRoles()){<select aria-label="Assign role" (change)="assignRole(user,$any($event.target).value);$any($event.target).value='' "><option value="">+ Role</option>@for(role of roles();track role.roleId){<option [value]="role.roleId">{{role.name}}</option>}</select>}@if(canManageUsers()){<select aria-label="Assign candidate" [value]="user.candidateId||''" (change)="assignCandidate(user,$any($event.target).value)"><option value="">{{user.candidateName ? '✕ আনঅ্যাসাইন (Super Admin)' : '🎯 প্রার্থী নির্বাচন'}}</option>@for(c of candidates();track c.candidateId){<option [value]="c.candidateId">{{c.symbolEmoji}} {{c.name}} ({{c.partyName}})</option>}</select>}</article>}@empty{<div class="empty">No users found.</div>}</div>
     </section>
     <section class="card panel"><header><div><p class="eyebrow">Authorization</p><h2>Roles & permissions</h2></div>@if(canManageRoles()){<button class="outline" (click)="toggle('role')">New role</button>}</header>
       @if(panel()==='role'){<form class="form-grid compact-form" (ngSubmit)="createRole()"><div class="form-field"><label>Role code</label><input name="roleCode" required maxlength="80" [(ngModel)]="roleForm.code"></div><div class="form-field"><label>Role name</label><input name="roleName" required maxlength="120" [(ngModel)]="roleForm.name"></div><button class="primary-button" [disabled]="saving()||!roleForm.code.trim()||!roleForm.name.trim()">Create role</button></form>}
@@ -20,14 +21,163 @@ import {AdministrationDashboard,PermissionSummary,RoleSummary,UserSummary} from 
     </section>
     <section class="card panel audit"><header><div><p class="eyebrow">Security audit</p><h2>Recent events</h2></div></header>@if(dashboard();as summary){<div class="timeline">@for(event of summary.recentSecurityEvents;track event.securityEventId){<article><i></i><div><b>{{event.eventType}}</b><small>{{event.occurredAtUtc|date:'dd MMM yyyy, HH:mm'}} UTC · {{event.source}}</small><p>{{event.detail}}</p><code>{{event.correlationId}}</code></div></article>}@empty{<div class="empty">No security events recorded.</div>}</div>}</section>
   </div>}
-  @if(onboarding()){<div class="backdrop" (click)="closeOnboarding()"><section class="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboard-title" (click)="$event.stopPropagation()"><header><div><p class="eyebrow">STAFF ONBOARDING</p><h2 id="onboard-title">Create staff account</h2><p>Create the account first. The person can then be assigned to election teams.</p></div><button class="icon" type="button" (click)="closeOnboarding()">×</button></header>@if(createdStaff();as account){<div class="account-ready"><span>✓</span><h3>Staff account is ready</h3><p>Give these temporary credentials to {{account.displayName}} through a secure channel.</p><dl><div><dt>Username</dt><dd>{{account.username}}</dd></div><div><dt>Temporary password</dt><dd>{{account.password}}</dd></div></dl><div class="review"><b>First login</b><span>The staff member will be required to create a private password before accessing the system.</span></div><footer><button class="primary-button" type="button" (click)="closeOnboarding()">Done</button></footer></div>}@else{<div class="steps"><span class="active"><b>1</b>Profile</span><i></i><span><b>2</b>Team assignment</span></div><form (ngSubmit)="createUser()"><section><h3>Staff identity</h3><div class="onboard-grid"><label class="wide">Full name<input name="displayName" required maxlength="200" placeholder="e.g. Jamal Uddin" [(ngModel)]="userForm.displayName"></label><label>Username<div class="input-action"><input name="username" required maxlength="200" autocomplete="off" placeholder="e.g. jamal.uddin" [(ngModel)]="userForm.username"><button type="button" (click)="suggestUsername()">Suggest</button></div><small>Used to sign in and must be unique.</small></label><label>Email address <em>Optional</em><input type="email" name="email" maxlength="320" placeholder="name@example.com" [(ngModel)]="userForm.email"></label></div></section><section><h3>Access & security</h3><div class="onboard-grid"><label>Access role <em>Optional</em><select name="role" [(ngModel)]="selectedRoleId"><option value="">No application role yet</option>@for(role of roles();track role.roleId){<option [value]="role.roleId">{{role.name}}</option>}</select><small>A role controls what this person can view or change.</small></label><label>Temporary password<div class="input-action"><input [type]="showPassword()?'text':'password'" name="password" required minlength="12" maxlength="200" autocomplete="new-password" [(ngModel)]="userForm.initialPassword"><button type="button" (click)="generatePassword()">Generate</button></div><small>Minimum 12 characters. The user must change it after login.</small></label></div></section><div class="review"><b>After account creation</b><span>Return to the relevant Team page → Add member → Select this staff account → Assign responsibility.</span></div><footer><button type="button" class="secondary" (click)="closeOnboarding()">Cancel</button><button class="primary-button" [disabled]="saving()||!validUser()">{{saving()?'Creating account…':'Create staff account'}}</button></footer></form>}</section></div>}
+  @if(onboarding()){<div class="backdrop" (click)="closeOnboarding()"><section class="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboard-title" (click)="$event.stopPropagation()"><header><div><p class="eyebrow">STAFF ONBOARDING</p><h2 id="onboard-title">Create staff account</h2><p>Create the account and bind them to a specific candidate or grant super user status.</p></div><button class="icon" type="button" (click)="closeOnboarding()">×</button></header>@if(createdStaff();as account){<div class="account-ready"><span>✓</span><h3>Staff account is ready</h3><p>Give these temporary credentials to {{account.displayName}} through a secure channel.</p><dl><div><dt>Username</dt><dd>{{account.username}}</dd></div><div><dt>Temporary password</dt><dd>{{account.password}}</dd></div></dl><div class="review"><b>First login</b><span>The staff member will be required to create a private password before accessing the system.</span></div><footer><button class="primary-button" type="button" (click)="closeOnboarding()">Done</button></footer></div>}@else{<div class="steps"><span class="active"><b>1</b>Profile</span><i></i><span><b>2</b>Team & Candidate</span></div><form (ngSubmit)="createUser()"><section><h3>Staff identity</h3><div class="onboard-grid"><label class="wide">Full name<input name="displayName" required maxlength="200" placeholder="e.g. Jamal Uddin" [(ngModel)]="userForm.displayName"></label><label>Username<div class="input-action"><input name="username" required maxlength="200" autocomplete="off" placeholder="e.g. jamal.uddin" [(ngModel)]="userForm.username"><button type="button" (click)="suggestUsername()">Suggest</button></div><small>Used to sign in and must be unique.</small></label><label>Email address <em>Optional</em><input type="email" name="email" maxlength="320" placeholder="name@example.com" [(ngModel)]="userForm.email"></label></div></section><section><h3>Access, Role & Candidate Binding</h3><div class="onboard-grid"><label class="wide">প্রার্থী নির্ধারণ (Candidate Scope) <em>সুপার ইউজার বাদে নির্দিষ্ট প্রার্থী আবশ্যক</em><select name="candidateId" [(ngModel)]="selectedCandidateId"><option value="">👑 কোনো প্রার্থী নয় (Central Super User)</option>@for(c of candidates();track c.candidateId){<option [value]="c.candidateId">{{c.symbolEmoji}} {{c.name}} ({{c.partyName}})</option>}</select><small>যে প্রার্থী সিলেক্ট করবেন, এই ইউজার লগইন করলে শুধুমাত্র সেই প্রার্থীর তথ্য, এজেন্ট ও ফলাফল দেখতে এবং পরিচালনা করতে পারবে।</small></label><label>Access role <em>Optional</em><select name="role" [(ngModel)]="selectedRoleId"><option value="">No application role yet</option>@for(role of roles();track role.roleId){<option [value]="role.roleId">{{role.name}}</option>}</select><small>A role controls what this person can view or change.</small></label><label>Temporary password<div class="input-action"><input [type]="showPassword()?'text':'password'" name="password" required minlength="12" maxlength="200" autocomplete="new-password" [(ngModel)]="userForm.initialPassword"><button type="button" (click)="generatePassword()">Generate</button></div><small>Minimum 12 characters. The user must change it after login.</small></label></div></section><div class="review"><b>Candidate Role Isolation</b><span>এই ব্যবহারকারী কেবল তার নির্ধারিত প্রার্থীর নির্বাচনী তথ্য দেখতে ও পরিচালনা করতে পারবেন।</span></div><footer><button type="button" class="secondary" (click)="closeOnboarding()">Cancel</button><button class="primary-button" [disabled]="saving()||!validUser()">{{saving()?'Creating account…':'Create staff account'}}</button></footer></form>}</section></div>}
 `,styles:[`
-  .heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:22px}.heading p{color:var(--muted);margin-bottom:0}.outline{border:1px solid var(--line);background:#fff;padding:8px 10px;border-radius:9px;color:var(--navy);font-weight:700;cursor:pointer}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.stats article{padding:17px;display:grid}.stats span{font-size:.72rem;color:var(--muted)}.stats b{font-size:1.8rem;color:var(--navy)}.layout{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}.panel{padding:20px;align-self:start}.panel header{display:flex;justify-content:space-between;align-items:center}.panel h2{margin:3px 0 16px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:13px;background:#f5f8fa;border:1px solid var(--line);border-radius:11px;margin-bottom:14px}.form-grid>button{grid-column:1/-1}.list article{display:flex;align-items:center;gap:9px;padding:12px 0;border-bottom:1px solid var(--line)}.list article>div{display:grid;gap:3px;flex:1}.list small,.role-head small,.timeline small{font-size:.7rem;color:var(--muted)}.list select,.roles select{border:1px solid var(--line);border-radius:8px;padding:7px;max-width:145px}.avatar{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#e4f2f5;color:var(--teal);font-weight:800}.inactive{background:#f5eeee;color:#8b3030}.roles{display:grid;gap:10px}.roles article{border:1px solid var(--line);border-radius:11px;padding:13px}.role-head{display:flex;justify-content:space-between;margin-bottom:10px}.role-head>div{display:grid}.tags{display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:5px}.tags em{font-style:normal;background:#edf5f7;color:var(--teal);padding:4px 6px;border-radius:6px;font-size:.65rem}.roles select{margin-top:10px;max-width:100%;width:100%}.audit{grid-column:1/-1}.timeline article{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.timeline i{width:9px;height:9px;background:var(--mint);border-radius:50%;margin-top:5px}.timeline article>div{display:grid;gap:3px}.timeline p{margin:3px 0;font-size:.8rem}.timeline code{font-size:.65rem;color:var(--muted)}.success-banner{border:1px solid #a8ddd1;background:#effbf8;color:#126b64;padding:12px 14px;border-radius:10px;margin-bottom:16px}.backdrop{position:fixed;inset:0;background:rgba(8,28,45,.58);display:grid;place-items:center;padding:20px;z-index:100}.onboarding{width:min(720px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(5,25,42,.3);padding:25px}.onboarding>header{display:flex;justify-content:space-between;align-items:start}.onboarding h2{font-size:1.65rem;margin:3px 0 5px}.onboarding header p{margin:0;color:var(--muted);font-size:.82rem}.icon{border:0;background:#eef2f4;width:34px;height:34px;border-radius:9px;font-size:1.4rem}.steps{display:flex;align-items:center;gap:9px;background:#f5f8fa;border-radius:11px;padding:10px 12px;margin:20px 0}.steps span{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.72rem;font-weight:700}.steps span.active{color:var(--teal)}.steps b{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#dcecef}.steps i{height:1px;background:var(--line);flex:1}.onboarding form{display:grid;gap:18px}.onboarding form section{border:1px solid var(--line);border-radius:12px;padding:16px}.onboarding h3{margin:0 0 13px;font-size:.92rem}.onboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.onboard-grid .wide{grid-column:1/-1}.onboarding label{display:grid;gap:6px;font-size:.75rem;font-weight:700}.onboarding label em{font-style:normal;color:var(--muted);font-weight:400}.onboarding input,.onboarding select{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff;box-sizing:border-box}.onboarding label small{font-weight:400;color:var(--muted);font-size:.65rem}.input-action{display:flex}.input-action input{border-radius:9px 0 0 9px}.input-action button{border:1px solid var(--line);border-left:0;background:#edf5f7;color:var(--teal);font-weight:700;border-radius:0 9px 9px 0;padding:0 11px}.review{display:grid;gap:4px;background:#eff8fa;border-left:3px solid var(--teal);border-radius:7px;padding:11px 13px;font-size:.75rem}.review span{color:var(--muted)}.onboarding footer{display:flex;justify-content:flex-end;gap:9px}.secondary{border:1px solid var(--line);background:#fff;padding:10px 15px;border-radius:9px;font-weight:700}.account-ready{text-align:center;padding:24px 6px 4px}.account-ready>span{width:54px;height:54px;border-radius:50%;background:#e7f7f2;color:#126b64;display:grid;place-items:center;margin:0 auto 12px;font-size:1.3rem;font-weight:800}.account-ready h3{font-size:1.25rem;margin:0 0 6px}.account-ready>p{color:var(--muted);font-size:.82rem}.account-ready dl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0;text-align:left}.account-ready dl div{background:#f5f8fa;border:1px solid var(--line);border-radius:10px;padding:12px}.account-ready dt{font-size:.65rem;color:var(--muted);margin-bottom:5px}.account-ready dd{margin:0;font-family:monospace;font-weight:700;word-break:break-all}.account-ready footer{margin-top:18px}@media(max-width:900px){.layout{grid-template-columns:1fr}.audit{grid-column:auto}.stats{grid-template-columns:1fr 1fr}}@media(max-width:600px){.heading{display:grid;gap:12px}.form-grid,.onboard-grid{grid-template-columns:1fr}.form-grid>button,.onboard-grid .wide{grid-column:auto}.list article{align-items:start;flex-wrap:wrap}.onboarding{padding:18px}.onboarding footer{flex-direction:column}.steps i{display:none}.steps{justify-content:space-between}.account-ready dl{grid-template-columns:1fr}}
+  .heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:22px}.heading p{color:var(--muted);margin-bottom:0}.outline{border:1px solid var(--line);background:#fff;padding:8px 10px;border-radius:9px;color:var(--navy);font-weight:700;cursor:pointer}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.stats article{padding:17px;display:grid}.stats span{font-size:.72rem;color:var(--muted)}.stats b{font-size:1.8rem;color:var(--navy)}.layout{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}.panel{padding:20px;align-self:start}.panel header{display:flex;justify-content:space-between;align-items:center}.panel h2{margin:3px 0 16px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:13px;background:#f5f8fa;border:1px solid var(--line);border-radius:11px;margin-bottom:14px}.form-grid>button{grid-column:1/-1}.list article{display:flex;align-items:center;gap:9px;padding:12px 0;border-bottom:1px solid var(--line)}.list article>div{display:grid;gap:3px;flex:1}.list small,.role-head small,.timeline small{font-size:.7rem;color:var(--muted)}.list select,.roles select{border:1px solid var(--line);border-radius:8px;padding:7px;max-width:145px}.avatar{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#e4f2f5;color:var(--teal);font-weight:800}.inactive{background:#f5eeee;color:#8b3030}.roles{display:grid;gap:10px}.roles article{border:1px solid var(--line);border-radius:11px;padding:13px}.role-head{display:flex;justify-content:space-between;margin-bottom:10px}.role-head>div{display:grid}.tags{display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:5px}.tags em{font-style:normal;background:#edf5f7;color:var(--teal);padding:4px 6px;border-radius:6px;font-size:.65rem}.cand-row{margin-top:3px}.cand-badge{display:inline-flex;align-items:center;gap:4px;background:#eaf8ef;color:#136c34;padding:3px 8px;border-radius:6px;font-size:.68rem;font-weight:700;border:1px solid #95deb0}.cand-badge.super{background:#fff8ed;color:#8f4500;border-color:#f9cca4}.roles select{margin-top:10px;max-width:100%;width:100%}.audit{grid-column:1/-1}.timeline article{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.timeline i{width:9px;height:9px;background:var(--mint);border-radius:50%;margin-top:5px}.timeline article>div{display:grid;gap:3px}.timeline p{margin:3px 0;font-size:.8rem}.timeline code{font-size:.65rem;color:var(--muted)}.success-banner{border:1px solid #a8ddd1;background:#effbf8;color:#126b64;padding:12px 14px;border-radius:10px;margin-bottom:16px}.backdrop{position:fixed;inset:0;background:rgba(8,28,45,.58);display:grid;place-items:center;padding:20px;z-index:100}.onboarding{width:min(720px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(5,25,42,.3);padding:25px}.onboarding>header{display:flex;justify-content:space-between;align-items:start}.onboarding h2{font-size:1.65rem;margin:3px 0 5px}.onboarding header p{margin:0;color:var(--muted);font-size:.82rem}.icon{border:0;background:#eef2f4;width:34px;height:34px;border-radius:9px;font-size:1.4rem}.steps{display:flex;align-items:center;gap:9px;background:#f5f8fa;border-radius:11px;padding:10px 12px;margin:20px 0}.steps span{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.72rem;font-weight:700}.steps span.active{color:var(--teal)}.steps b{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#dcecef}.steps i{height:1px;background:var(--line);flex:1}.onboarding form{display:grid;gap:18px}.onboarding form section{border:1px solid var(--line);border-radius:12px;padding:16px}.onboarding h3{margin:0 0 13px;font-size:.92rem}.onboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.onboard-grid .wide{grid-column:1/-1}.onboarding label{display:grid;gap:6px;font-size:.75rem;font-weight:700}.onboarding label em{font-style:normal;color:var(--muted);font-weight:400}.onboarding input,.onboarding select{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff;box-sizing:border-box}.onboarding label small{font-weight:400;color:var(--muted);font-size:.65rem}.input-action{display:flex}.input-action input{border-radius:9px 0 0 9px}.input-action button{border:1px solid var(--line);border-left:0;background:#edf5f7;color:var(--teal);font-weight:700;border-radius:0 9px 9px 0;padding:0 11px}.review{display:grid;gap:4px;background:#eff8fa;border-left:3px solid var(--teal);border-radius:7px;padding:11px 13px;font-size:.75rem}.review span{color:var(--muted)}.onboarding footer{display:flex;justify-content:flex-end;gap:9px}.secondary{border:1px solid var(--line);background:#fff;padding:10px 15px;border-radius:9px;font-weight:700}.account-ready{text-align:center;padding:24px 6px 4px}.account-ready>span{width:54px;height:54px;border-radius:50%;background:#e7f7f2;color:#126b64;display:grid;place-items:center;margin:0 auto 12px;font-size:1.3rem;font-weight:800}.account-ready h3{font-size:1.25rem;margin:0 0 6px}.account-ready>p{color:var(--muted);font-size:.82rem}.account-ready dl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0;text-align:left}.account-ready dl div{background:#f5f8fa;border:1px solid var(--line);border-radius:10px;padding:12px}.account-ready dt{font-size:.65rem;color:var(--muted);margin-bottom:5px}.account-ready dd{margin:0;font-family:monospace;font-weight:700;word-break:break-all}.account-ready footer{margin-top:18px}@media(max-width:900px){.layout{grid-template-columns:1fr}.audit{grid-column:auto}.stats{grid-template-columns:1fr 1fr}}@media(max-width:600px){.heading{display:grid;gap:12px}.form-grid,.onboard-grid{grid-template-columns:1fr}.form-grid>button,.onboard-grid .wide{grid-column:auto}.list article{align-items:start;flex-wrap:wrap}.onboarding{padding:18px}.onboarding footer{flex-direction:column}.steps i{display:none}.steps{justify-content:space-between}.account-ready dl{grid-template-columns:1fr}}
 `]})
 export class AdministrationPage{
-  private readonly api=inject(EemsApiService);private readonly auth=inject(AuthService);readonly users=signal<UserSummary[]>([]);readonly roles=signal<RoleSummary[]>([]);readonly permissions=signal<PermissionSummary[]>([]);readonly dashboard=signal<AdministrationDashboard|null>(null);readonly loading=signal(true);readonly saving=signal(false);readonly error=signal('');readonly notice=signal('');readonly panel=signal('');readonly onboarding=signal(false);readonly showPassword=signal(false);readonly createdStaff=signal<{displayName:string;username:string;password:string}|null>(null);readonly canManageUsers=()=>this.auth.hasPermission('iam.users.manage');readonly canManageRoles=()=>this.auth.hasPermission('iam.roles.manage');userForm={username:'',displayName:'',email:'',initialPassword:''};selectedRoleId='';roleForm={code:'',name:''};
-  constructor(){this.load()}load(){this.loading.set(true);this.error.set('');forkJoin({users:this.api.getUsers(),roles:this.api.getRoles(),permissions:this.api.getPermissions(),dashboard:this.api.getAdministrationDashboard()}).subscribe({next:x=>{this.users.set(x.users);this.roles.set(x.roles);this.permissions.set(x.permissions);this.dashboard.set(x.dashboard);this.loading.set(false)},error:()=>{this.error.set('Administration data could not be loaded.');this.loading.set(false)}})}toggle(name:string){this.panel.update(value=>value===name?'':name)}validUser(){return!!this.userForm.username.trim()&&!!this.userForm.displayName.trim()&&this.userForm.initialPassword.length>=12}
-  openOnboarding(){this.userForm={username:'',displayName:'',email:'',initialPassword:''};this.selectedRoleId='';this.createdStaff.set(null);this.showPassword.set(false);this.onboarding.set(true)}closeOnboarding(){if(this.saving())return;this.onboarding.set(false);this.createdStaff.set(null)}suggestUsername(){const base=this.userForm.displayName.trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').replace(/^\.|\.$/g,'');this.userForm.username=base||`staff.${this.users().length+1}`}generatePassword(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';const values=crypto.getRandomValues(new Uint32Array(16));this.userForm.initialPassword=`Aa1!${Array.from(values,x=>chars[x%chars.length]).join('')}`;this.showPassword.set(true)}createUser(){if(!this.validUser()||this.saving())return;this.saving.set(true);this.error.set('');const credentials={displayName:this.userForm.displayName,username:this.userForm.username,password:this.userForm.initialPassword};const role=this.roles().find(x=>x.roleId===this.selectedRoleId);this.api.createUser({...this.userForm,email:this.userForm.email.trim()||null}).pipe(switchMap(user=>role?this.api.assignRole(user.userId,role.roleId).pipe(map(()=>({...user,roleCodes:[role.code]}))):of(user))).subscribe({next:item=>{this.users.update(x=>[...x,item]);this.notice.set(`${item.displayName} is ready for team assignment.`);this.saving.set(false);this.createdStaff.set(credentials);this.load()},error:()=>{this.error.set('The staff account could not be created. Check the username, email and access role.');this.saving.set(false)}})}setActive(user:UserSummary){this.run(this.api.setUserActive(user.userId,!user.isActive),()=>this.users.update(items=>items.map(item=>item.userId===user.userId?{...item,isActive:!item.isActive}:item)))}assignRole(user:UserSummary,roleId:string){if(!roleId)return;const role=this.roles().find(item=>item.roleId===roleId);this.run(this.api.assignRole(user.userId,roleId),()=>this.users.update(items=>items.map(item=>item.userId===user.userId&&role&&!item.roleCodes.includes(role.code)?{...item,roleCodes:[...item.roleCodes,role.code]}:item)))}
-  createRole(){this.run(this.api.createRole(this.roleForm),item=>{this.roles.update(x=>[...x,item]);this.roleForm={code:'',name:''};this.panel.set('')})}assignPermission(role:RoleSummary,code:string){if(!code)return;this.run(this.api.assignPermission(role.roleId,code),()=>this.roles.update(items=>items.map(item=>item.roleId===role.roleId&&!item.permissions.includes(code)?{...item,permissions:[...item.permissions,code]}:item)))}availablePermissions(role:RoleSummary){return this.permissions().filter(item=>!role.permissions.includes(item.code))}
-  private run<T>(request:Observable<T>,next:(value:T)=>void){if(this.saving())return;this.saving.set(true);this.error.set('');request.subscribe({next:value=>{next(value);this.notice.set('Administration change saved.');this.saving.set(false)},error:()=>{this.error.set('The change could not be saved. Check for duplicate values and permissions.');this.saving.set(false)}})}
+  private readonly api=inject(EemsApiService);
+  private readonly auth=inject(AuthService);
+  readonly users=signal<UserSummary[]>([]);
+  readonly roles=signal<RoleSummary[]>([]);
+  readonly permissions=signal<PermissionSummary[]>([]);
+  readonly candidates=signal<CandidateWarRoomHero[]>([]);
+  readonly dashboard=signal<AdministrationDashboard|null>(null);
+  readonly loading=signal(true);
+  readonly saving=signal(false);
+  readonly error=signal('');
+  readonly notice=signal('');
+  readonly panel=signal('');
+  readonly onboarding=signal(false);
+  readonly showPassword=signal(false);
+  readonly createdStaff=signal<{displayName:string;username:string;password:string}|null>(null);
+  readonly canManageUsers=()=>this.auth.hasPermission('iam.users.manage');
+  readonly canManageRoles=()=>this.auth.hasPermission('iam.roles.manage');
+
+  userForm={username:'',displayName:'',email:'',initialPassword:''};
+  selectedRoleId='';
+  selectedCandidateId='';
+  roleForm={code:'',name:''};
+
+  constructor(){this.load()}
+
+  load(){
+    this.loading.set(true);
+    this.error.set('');
+    forkJoin({
+      users:this.api.getUsers(),
+      roles:this.api.getRoles(),
+      permissions:this.api.getPermissions(),
+      dashboard:this.api.getAdministrationDashboard(),
+      candidates:this.api.getCandidatesForElection('7a2ec4ed-9aba-4707-aa49-a58b51e82713')
+    }).subscribe({
+      next:x=>{
+        this.users.set(x.users);
+        this.roles.set(x.roles);
+        this.permissions.set(x.permissions);
+        this.dashboard.set(x.dashboard);
+        this.candidates.set(x.candidates);
+        this.loading.set(false);
+      },
+      error:()=>{
+        this.error.set('Administration data could not be loaded.');
+        this.loading.set(false);
+      }
+    });
+  }
+
+  toggle(name:string){this.panel.update(value=>value===name?'':name)}
+  validUser(){return!!this.userForm.username.trim()&&!!this.userForm.displayName.trim()&&this.userForm.initialPassword.length>=12}
+
+  openOnboarding(){
+    this.userForm={username:'',displayName:'',email:'',initialPassword:''};
+    this.selectedRoleId='';
+    this.selectedCandidateId='';
+    this.createdStaff.set(null);
+    this.showPassword.set(false);
+    this.onboarding.set(true);
+  }
+
+  closeOnboarding(){
+    if(this.saving())return;
+    this.onboarding.set(false);
+    this.createdStaff.set(null);
+  }
+
+  suggestUsername(){
+    const base=this.userForm.displayName.trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').replace(/^\.|\.$/g,'');
+    this.userForm.username=base||`staff.${this.users().length+1}`;
+  }
+
+  generatePassword(){
+    const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    const values=crypto.getRandomValues(new Uint32Array(16));
+    this.userForm.initialPassword=`Aa1!${Array.from(values,x=>chars[x%chars.length]).join('')}`;
+    this.showPassword.set(true);
+  }
+
+  createUser(){
+    if(!this.validUser()||this.saving())return;
+    this.saving.set(true);
+    this.error.set('');
+    const credentials={displayName:this.userForm.displayName,username:this.userForm.username,password:this.userForm.initialPassword};
+    const role=this.roles().find(x=>x.roleId===this.selectedRoleId);
+    const candidateId=this.selectedCandidateId?this.selectedCandidateId:null;
+
+    this.api.createUser({...this.userForm,email:this.userForm.email.trim()||null,candidateId}).pipe(
+      switchMap(user=>role?this.api.assignRole(user.userId,role.roleId).pipe(map(()=>({...user,roleCodes:[role.code]}))):of(user))
+    ).subscribe({
+      next:item=>{
+        this.users.update(x=>[...x,item]);
+        this.notice.set(`${item.displayName} is ready for candidate campaign activities.`);
+        this.saving.set(false);
+        this.createdStaff.set(credentials);
+        this.load();
+      },
+      error:()=>{
+        this.error.set('The staff account could not be created. Check the username, email, candidate assignment and access role.');
+        this.saving.set(false);
+      }
+    });
+  }
+
+  setActive(user:UserSummary){
+    this.run(this.api.setUserActive(user.userId,!user.isActive),()=>this.users.update(items=>items.map(item=>item.userId===user.userId?{...item,isActive:!item.isActive}:item)));
+  }
+
+  assignRole(user:UserSummary,roleId:string){
+    if(!roleId)return;
+    const role=this.roles().find(item=>item.roleId===roleId);
+    this.run(this.api.assignRole(user.userId,roleId),()=>this.users.update(items=>items.map(item=>item.userId===user.userId&&role&&!item.roleCodes.includes(role.code)?{...item,roleCodes:[...item.roleCodes,role.code]}:item)));
+  }
+
+  assignCandidate(user:UserSummary,candidateId:string){
+    const candId=candidateId?candidateId:null;
+    const cand=this.candidates().find(c=>c.candidateId===candId);
+    this.run(
+      this.api.assignUserCandidate(user.userId,candId),
+      ()=>{
+        this.users.update(items=>items.map(item=>item.userId===user.userId?{...item,candidateId:candId,candidateName:cand?.name??null}:item));
+        this.notice.set(`User '${user.displayName}' candidate updated.`);
+      }
+    );
+  }
+
+  createRole(){
+    this.run(this.api.createRole(this.roleForm),item=>{this.roles.update(x=>[...x,item]);this.roleForm={code:'',name:''};this.panel.set('')});
+  }
+
+  assignPermission(role:RoleSummary,code:string){
+    if(!code)return;
+    this.run(this.api.assignPermission(role.roleId,code),()=>this.roles.update(items=>items.map(item=>item.roleId===role.roleId&&!item.permissions.includes(code)?{...item,permissions:[...item.permissions,code]}:item)));
+  }
+
+  availablePermissions(role:RoleSummary){return this.permissions().filter(item=>!role.permissions.includes(item.code))}
+
+  private run<T>(request:Observable<T>,next:(value:T)=>void){
+    if(this.saving())return;
+    this.saving.set(true);
+    this.error.set('');
+    request.subscribe({
+      next:value=>{
+        next(value);
+        this.notice.set('Administration change saved.');
+        this.saving.set(false);
+      },
+      error:()=>{
+        this.error.set('The change could not be saved. Check for duplicate values and permissions.');
+        this.saving.set(false);
+      }
+    });
+  }
 }
